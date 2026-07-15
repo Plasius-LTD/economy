@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "lib": ["ES2022"],
+    "moduleResolution": "NodeNext",
+    "ignoreDeprecations": "6.0",
+    "types": ["node", "vitest"],
+    "declaration": true,
+    "sourceMap": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": true,
+    "resolveJsonModule": true,
+    "outDir": "dist",
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src"]
+}
+
