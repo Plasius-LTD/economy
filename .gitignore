@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+.npm-cache-packcheck/
+*.log
+.DS_Store
+
+# Private key material must never be committed.
+**/certs/**/*-key.pem
+**/certs/**/*.key
+**/certs/**/*.p8
+
