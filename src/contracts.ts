@@ -21,7 +21,7 @@ export function assertEconomyIdentifier(
   label = "identifier",
 ): void {
   economyAssert(
-    IDENTIFIER.test(value),
+    typeof value === "string" && IDENTIFIER.test(value),
     "INVALID_CONTRACT",
     `${label} must be a non-empty opaque identifier`,
   );
@@ -29,6 +29,11 @@ export function assertEconomyIdentifier(
 
 /** Parses a bounded ISO timestamp and returns milliseconds since epoch. */
 export function parseIsoTimestamp(value: IsoTimestamp): number {
+  economyAssert(
+    typeof value === "string",
+    "INVALID_CONTRACT",
+    "Timestamp must be an ISO-8601 UTC value",
+  );
   const match = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{3}))?Z$/u.exec(
     value,
   );

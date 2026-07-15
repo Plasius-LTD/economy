@@ -27,7 +27,7 @@ function assertInRange(amount: bigint): void {
 /** Parses a canonical base-10 TokenSubunit string without floating point. */
 export function parseTokenSubunits(value: string): bigint {
   economyAssert(
-    CANONICAL_INTEGER.test(value),
+    typeof value === "string" && CANONICAL_INTEGER.test(value),
     "INVALID_AMOUNT",
     "TokenSubunit amount must be a canonical base-10 integer string",
   );
@@ -81,4 +81,3 @@ export function sumTokenSubunits(values: readonly string[]): bigint {
   }
   return total;
 }
-

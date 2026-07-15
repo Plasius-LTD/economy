@@ -24,6 +24,12 @@ describe("TokenSubunit arithmetic", () => {
     },
   );
 
+  it("rejects non-string runtime values instead of coercing JSON numbers", () => {
+    expect(() => parseTokenSubunits(50_000 as never)).toThrowError(
+      expect.objectContaining({ code: "INVALID_AMOUNT" }),
+    );
+  });
+
   it("rejects signed 64-bit overflow during parse, serialize, and sum", () => {
     expect(() => parseTokenSubunits("9223372036854775808")).toThrowError(
       expect.objectContaining({ code: "AMOUNT_OUT_OF_RANGE" }),
@@ -46,4 +52,3 @@ describe("TokenSubunit arithmetic", () => {
     );
   });
 });
-

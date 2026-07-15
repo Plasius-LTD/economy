@@ -45,7 +45,13 @@ const restored = parseTokenSubunits(wireAmount); // 50000n
 ```
 
 Non-canonical values such as `"01"`, decimals, exponent notation, and values
-outside signed PostgreSQL `bigint` range are rejected.
+outside signed PostgreSQL `bigint` range are rejected. Runtime validators also
+reject non-string JSON values rather than coercing numbers into wire amounts.
+
+`ActivityEntryV1` contains both a stable `source` (`shopify`, `ayet`, `bitlabs`,
+`subscription`, `event`, `competition`, or `adjustment`) and a bounded
+display-oriented `sourceLabel`. Filters and reconciliation must use `source`;
+localized UI must use `sourceLabel`.
 
 ## Baseline GBP catalog
 

@@ -19,6 +19,7 @@ import {
   type WalletId,
 } from "./contracts.js";
 import { economyAssert } from "./errors.js";
+import type { TokenSource } from "./lots.js";
 
 export type ActivityType =
   | "purchase"
@@ -68,6 +69,16 @@ const ACTIVITY_STATUSES = new Set<ActivityStatus>([
   "settled",
   "reversed",
   "failed",
+]);
+
+const ACTIVITY_SOURCES = new Set<TokenSource>([
+  "shopify",
+  "ayet",
+  "bitlabs",
+  "subscription",
+  "event",
+  "competition",
+  "adjustment",
 ]);
 
 function assertCanonicalHash(value: string, label: string): void {
@@ -121,6 +132,8 @@ export interface ActivityEntryV1 {
   readonly status: ActivityStatus;
   readonly occurredAt: IsoTimestamp;
   readonly amount: TokenSubunitString;
+  /** Stable source identity used for filtering and provenance presentation. */
+  readonly source: TokenSource;
   readonly beneficiaryAccountId?: AccountId;
   readonly maskedReference?: string;
   readonly sourceLabel: string;
@@ -136,9 +149,10 @@ export function assertActivityEntry(entry: ActivityEntryV1): void {
   assertEconomyIdentifier(entry.transactionId, "transactionId");
   economyAssert(
     ACTIVITY_TYPES.has(entry.activityType) &&
-      ACTIVITY_STATUSES.has(entry.status),
+      ACTIVITY_STATUSES.has(entry.status) &&
+      ACTIVITY_SOURCES.has(entry.source),
     "INVALID_CONTRACT",
-    "Activity type or status is unsupported",
+    "Activity type, status, or source is unsupported",
   );
   parseIsoTimestamp(entry.occurredAt);
   economyAssert(
@@ -154,7 +168,8 @@ export function assertActivityEntry(entry: ActivityEntryV1): void {
   }
   if (entry.maskedReference !== undefined) {
     economyAssert(
-      entry.maskedReference.length > 0 &&
+      typeof entry.maskedReference === "string" &&
+        entry.maskedReference.length > 0 &&
         entry.maskedReference.length <= 128 &&
         !hasControlCharacters(entry.maskedReference),
       "INVALID_CONTRACT",
@@ -162,7 +177,8 @@ export function assertActivityEntry(entry: ActivityEntryV1): void {
     );
   }
   economyAssert(
-    entry.sourceLabel.trim().length > 0 &&
+    typeof entry.sourceLabel === "string" &&
+      entry.sourceLabel.trim().length > 0 &&
       entry.sourceLabel.length <= 128 &&
       !hasControlCharacters(entry.sourceLabel),
     "INVALID_CONTRACT",

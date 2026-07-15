@@ -51,6 +51,7 @@ describe("immutable double-entry transactions", () => {
       status: "settled",
       occurredAt: "2026-07-15T10:00:00.000Z",
       amount: serializeTokenSubunits(50_000n),
+      source: "shopify",
       beneficiaryAccountId: "account:adult",
       maskedReference: "Order ending 1234",
       sourceLabel: "Shopify purchase",
@@ -58,6 +59,12 @@ describe("immutable double-entry transactions", () => {
     expect(() => assertActivityEntry(activity)).not.toThrow();
     expect(() =>
       assertActivityEntry({ ...activity, sourceLabel: "bad\nlabel" }),
+    ).toThrowError(expect.objectContaining({ code: "INVALID_CONTRACT" }));
+    expect(() =>
+      assertActivityEntry({ ...activity, source: "unknown" as never }),
+    ).toThrowError(expect.objectContaining({ code: "INVALID_CONTRACT" }));
+    expect(() =>
+      assertActivityEntry({ ...activity, sourceLabel: 42 as never }),
     ).toThrowError(expect.objectContaining({ code: "INVALID_CONTRACT" }));
     expect(() =>
       assertActivityEntry({

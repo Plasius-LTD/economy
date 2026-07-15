@@ -9,10 +9,10 @@ promotion is owned by the approved GitHub CD workflow.
   - (placeholder)
 
 - **Changed**
-  - (placeholder)
+  - Added stable `TokenSource` provenance to privacy-safe activity entries so UI filters never depend on localized source labels.
 
 - **Fixed**
-  - (placeholder)
+  - Rejected non-string JSON values in exact amount, identifier, timestamp, and activity display validation instead of permitting implicit coercion or native type errors.
 
 - **Security**
   - (placeholder)
