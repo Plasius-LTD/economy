@@ -9,6 +9,20 @@ promotion is owned by the approved GitHub CD workflow.
   - (placeholder)
 
 - **Changed**
+  - (placeholder)
+
+- **Fixed**
+  - (placeholder)
+
+- **Security**
+  - (placeholder)
+
+## [0.2.0] - 2026-07-15
+
+- **Added**
+  - (placeholder)
+
+- **Changed**
   - Added stable `TokenSource` provenance to privacy-safe activity entries so UI filters never depend on localized source labels.
 
 - **Fixed**
@@ -30,3 +44,4 @@ promotion is owned by the approved GitHub CD workflow.
 
 
 [0.1.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.1.0
+[0.2.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.2.0
