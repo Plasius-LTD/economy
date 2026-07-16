@@ -4,6 +4,7 @@ import {
   sumTokenSubunits,
   type TokenSubunitString,
 } from "./amount.js";
+import { compareUnicodeCodeUnits } from "./canonical-order.js";
 import {
   ECONOMY_CONTRACT_VERSION,
   assertEconomyIdentifier,
@@ -334,7 +335,9 @@ export function canonicalTransactionPayload(
 ): string {
   assertBalancedTransaction(transaction);
   const postings = [...transaction.postings]
-    .sort((left, right) => left.postingId.localeCompare(right.postingId))
+    .sort((left, right) =>
+      compareUnicodeCodeUnits(left.postingId, right.postingId),
+    )
     .map((posting) => ({
       schemaVersion: posting.schemaVersion,
       postingId: posting.postingId,

@@ -5,7 +5,9 @@
 - Validate every transaction before projection.
 - Require at least two non-zero postings and an exact zero sum.
 - Deduplicate transaction IDs, idempotency keys, and provider-event IDs.
-- Apply postings in the accepted journal order; sort only for canonical hashing.
+- Apply postings in the accepted journal order; sort only for canonical hashing
+  using locale-independent code-unit order. For validated ASCII identifiers and
+  metadata keys, this matches PostgreSQL `COLLATE "C"`.
 - Protect spendable/reservable accounts from negative balances while allowing
   modeled clearing accounts to carry signed balances.
 - Rebuild projections solely from immutable transactions.

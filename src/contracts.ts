@@ -1,3 +1,4 @@
+import { compareUnicodeCodeUnits } from "./canonical-order.js";
 import { economyAssert } from "./errors.js";
 
 export const ECONOMY_CONTRACT_VERSION = "1" as const;
@@ -55,11 +56,13 @@ export function parseIsoTimestamp(value: IsoTimestamp): number {
   return milliseconds;
 }
 
-/** Returns a new record with keys sorted for canonical serialization. */
+/** Returns a new record with keys sorted by locale-independent code units. */
 export function sortStringRecord(
   value: Readonly<Record<string, string>>,
 ): Readonly<Record<string, string>> {
   return Object.fromEntries(
-    Object.entries(value).sort(([left], [right]) => left.localeCompare(right)),
+    Object.entries(value).sort(([left], [right]) =>
+      compareUnicodeCodeUnits(left, right),
+    ),
   );
 }
