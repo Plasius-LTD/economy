@@ -6,6 +6,20 @@ promotion is owned by the approved GitHub CD workflow.
 ## Unreleased
 
 - **Added**
+  - (placeholder)
+
+- **Changed**
+  - (placeholder)
+
+- **Fixed**
+  - (placeholder)
+
+- **Security**
+  - (placeholder)
+
+## [0.3.0] - 2026-07-16
+
+- **Added**
   - Added the backward-compatible `EconomyPersistencePortV2` atomic mutation boundary for command/workflow evidence, owner-constrained wallets and allocations, versioned source-lot movements, balance/lifetime deltas, active-writer fencing, canonical chain-head locking, actor/subject/command-scoped idempotency, and outbox append.
   - Added `EconomyQueryPortV1`, explicit multi-wallet portfolio scopes/results, deterministic wallet balance and lifetime helpers, and discriminated economic versus workflow activity with bounded cursor pagination.
   - Added settlement-authoritative early-backer policy V2 while retaining the V1 evaluator unchanged.
@@ -47,3 +61,4 @@ promotion is owned by the approved GitHub CD workflow.
 
 [0.1.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.1.0
 [0.2.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.2.0
+[0.3.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.3.0
