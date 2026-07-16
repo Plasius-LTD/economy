@@ -17,6 +17,9 @@ const REQUIRED_RUNTIME_EXPORTS = [
   "assertFlatTokenCatalog",
   "assertPurchaseIntentBinding",
   "assertWallet",
+  "applyPaidLotLifecycleEvent",
+  "reducePurchaseIntentTransitions",
+  "reserveRollingPurchaseCaps",
 ];
 
 function listTypeScriptFiles(directory) {
