@@ -12,6 +12,20 @@ promotion is owned by the approved GitHub CD workflow.
   - (placeholder)
 
 - **Fixed**
+  - (placeholder)
+
+- **Security**
+  - (placeholder)
+
+## [0.3.1] - 2026-07-16
+
+- **Added**
+  - (placeholder)
+
+- **Changed**
+  - (placeholder)
+
+- **Fixed**
   - Made canonical transaction metadata and posting ordering independent of
     host locale, with exact JSON and SHA-256 golden vectors aligned to
     PostgreSQL `COLLATE "C"` ordering for the validated ASCII fields.
@@ -64,3 +78,4 @@ promotion is owned by the approved GitHub CD workflow.
 [0.1.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.1.0
 [0.2.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.2.0
 [0.3.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.3.0
+[0.3.1]: https://github.com/Plasius-LTD/economy/releases/tag/v0.3.1
