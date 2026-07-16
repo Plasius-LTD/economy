@@ -120,7 +120,11 @@ const payloadForApprovedHashAdapter = canonicalTransactionPayload(transaction);
 ```
 
 The package produces canonical bytes but deliberately leaves SHA-256/HSM
-signing to an approved infrastructure adapter.
+signing to an approved infrastructure adapter. Metadata keys and posting IDs
+are ordered with locale-independent UTF-16 code-unit comparison. Their
+validated ASCII alphabet makes that ordering identical to PostgreSQL
+`COLLATE "C"`; adapters must hash the exact UTF-8 bytes returned by
+`canonicalTransactionPayload()`.
 
 ## Source-lot policy and allocations
 

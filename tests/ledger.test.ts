@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   assertActivityEntry,
@@ -85,6 +86,57 @@ describe("immutable double-entry transactions", () => {
       canonical.indexOf("posting:2"),
     );
     expect(canonical).not.toContain("canonicalHash");
+  });
+
+  it("matches the cross-language canonical transaction golden vector", () => {
+    const transaction: LedgerTransactionV1 = {
+      schemaVersion: "1",
+      transactionId: "txn:golden:1",
+      activityType: "purchase",
+      status: "settled",
+      idempotencyKey: "intent:golden:paid",
+      providerEventId: "provider:event:golden",
+      effectiveAt: "2026-07-15T10:00:00.000Z",
+      recordedAt: "2026-07-15T10:00:01.000Z",
+      previousCanonicalHash: `sha256:${"a".repeat(64)}`,
+      canonicalHash: `sha256:${"b".repeat(64)}`,
+      metadata: {
+        z: "last",
+        a: "lower",
+        Z: "upper-last",
+        A: "upper-first",
+      },
+      postings: [
+        {
+          schemaVersion: "1",
+          postingId: "posting:a",
+          transactionId: "txn:golden:1",
+          accountId: "account:treasury",
+          walletId: "wallet:treasury",
+          lotId: "lot:golden",
+          amount: serializeTokenSubunits(50_000n),
+        },
+        {
+          schemaVersion: "1",
+          postingId: "posting:A",
+          transactionId: "txn:golden:1",
+          accountId: "account:clearing",
+          amount: serializeTokenSubunits(-50_000n),
+        },
+      ],
+    };
+    const expectedCanonical =
+      '{"schemaVersion":"1","transactionId":"txn:golden:1","activityType":"purchase","status":"settled","idempotencyKey":"intent:golden:paid","providerEventId":"provider:event:golden","effectiveAt":"2026-07-15T10:00:00.000Z","recordedAt":"2026-07-15T10:00:01.000Z","previousCanonicalHash":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","metadata":{"A":"upper-first","Z":"upper-last","a":"lower","z":"last"},"postings":[{"schemaVersion":"1","postingId":"posting:A","transactionId":"txn:golden:1","accountId":"account:clearing","amount":"-50000"},{"schemaVersion":"1","postingId":"posting:a","transactionId":"txn:golden:1","accountId":"account:treasury","walletId":"wallet:treasury","lotId":"lot:golden","amount":"50000"}]}';
+
+    const canonical = canonicalTransactionPayload(transaction);
+    const canonicalHash = `sha256:${createHash("sha256")
+      .update(canonical, "utf8")
+      .digest("hex")}`;
+
+    expect(canonical).toBe(expectedCanonical);
+    expect(canonicalHash).toBe(
+      "sha256:36623f8b026e422f9bf4a418494510b1283cde511ff1ca3b6b614d90f026b45e",
+    );
   });
 
   it("rejects unbalanced, zero, duplicate, mismatched, and unsupported postings", () => {

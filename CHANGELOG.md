@@ -12,7 +12,9 @@ promotion is owned by the approved GitHub CD workflow.
   - (placeholder)
 
 - **Fixed**
-  - (placeholder)
+  - Made canonical transaction metadata and posting ordering independent of
+    host locale, with exact JSON and SHA-256 golden vectors aligned to
+    PostgreSQL `COLLATE "C"` ordering for the validated ASCII fields.
 
 - **Security**
   - (placeholder)
