@@ -26,6 +26,12 @@ export type WalletKind =
 export type WalletStatus = "active" | "restricted" | "closed";
 export type WalletOwnerType = "account" | "household" | "system";
 
+/** Exact owner identity used by persistence lookups and IDOR-safe locking. */
+export interface WalletOwnerReferenceV1 {
+  readonly ownerType: WalletOwnerType;
+  readonly ownerId: AccountId | HouseholdId | "system";
+}
+
 /** Versioned authoritative wallet descriptor. */
 export interface WalletV1 {
   readonly schemaVersion: EconomyContractVersion;
@@ -62,6 +68,31 @@ export interface WalletLifetimeTotalsV1 {
   readonly reclaimed: TokenSubunitString;
   readonly spent: TokenSubunitString;
   readonly reversed: TokenSubunitString;
+}
+
+/** Validates an exact wallet owner without accepting a browser-derived role. */
+export function assertWalletOwnerReference(
+  owner: WalletOwnerReferenceV1,
+): void {
+  economyAssert(
+    ["account", "household", "system"].includes(owner.ownerType),
+    "INVALID_CONTRACT",
+    "Wallet owner reference has an unsupported type",
+  );
+  if (owner.ownerType === "system") {
+    economyAssert(
+      owner.ownerId === "system",
+      "INVALID_CONTRACT",
+      "System wallet lookups must use the system owner",
+    );
+  } else {
+    assertEconomyIdentifier(owner.ownerId, "ownerId");
+    economyAssert(
+      owner.ownerId !== "system",
+      "INVALID_CONTRACT",
+      "Account and household wallets cannot use the system owner",
+    );
+  }
 }
 
 /** Validates wallet ownership, lifecycle, and optimistic-version facts. */

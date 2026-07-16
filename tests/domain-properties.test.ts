@@ -7,6 +7,7 @@ import {
   assertReversalAvailable,
   createGameplayAllocation,
   createReversalTransaction,
+  createWalletBalanceSummary,
   parseTokenSubunits,
   rebuildBalanceProjection,
   reclaimGameplayAllocation,
@@ -14,6 +15,7 @@ import {
   serializeTokenSubunits,
   type LedgerTransactionV1,
   type SourceLotV1,
+  type WalletBalanceProjectionV1,
 } from "../src/index.js";
 
 function transfer(id: number, amount: bigint): LedgerTransactionV1 {
@@ -55,6 +57,30 @@ describe("economy domain properties", () => {
         },
       ),
       { numRuns: 500 },
+    );
+  });
+
+  it("splits arbitrary spendable balances without losing subunits", () => {
+    fc.assert(
+      fc.property(fc.bigInt({ min: 0n, max: 1_000_000_000n }), (spendable) => {
+        const projection: WalletBalanceProjectionV1 = {
+          schemaVersion: "1",
+          walletId: "wallet:property",
+          spendable: serializeTokenSubunits(spendable),
+          reserved: serializeTokenSubunits(0n),
+          held: serializeTokenSubunits(0n),
+          version: 1,
+          asOf: "2026-07-15T10:00:00.000Z",
+        };
+        const summary = createWalletBalanceSummary(projection);
+        const available = parseTokenSubunits(summary.available);
+        const progress = parseTokenSubunits(summary.rewardProgress);
+        expect(available + progress).toBe(spendable);
+        expect(available % 1_000n).toBe(0n);
+        expect(progress).toBeGreaterThanOrEqual(0n);
+        expect(progress).toBeLessThan(1_000n);
+      }),
+      { numRuns: 300 },
     );
   });
 

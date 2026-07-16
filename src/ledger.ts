@@ -45,6 +45,23 @@ export type ActivityStatus =
   | "reversed"
   | "failed";
 
+/**
+ * States permitted on an immutable transaction accepted by the V2
+ * persistence boundary. Pending and failed work belongs to the command
+ * workflow, while a reversed presentation state is derived from an immutable
+ * compensating transaction rather than written back to the original journal
+ * row.
+ */
+export type EconomicJournalStatus = "held" | "settled";
+
+/** A journal transaction that has an immediate economic effect. */
+export type EconomicJournalTransactionV1 = Omit<
+  LedgerTransactionV1,
+  "status"
+> & {
+  readonly status: EconomicJournalStatus;
+};
+
 const ACTIVITY_TYPES = new Set<ActivityType>([
   "purchase",
   "subscription",
@@ -290,6 +307,21 @@ export function assertBalancedTransaction(
       0n,
     "UNBALANCED_TRANSACTION",
     "Ledger postings must sum to zero TokenSubunits",
+  );
+}
+
+/**
+ * Narrows a balanced V1 transaction to the states accepted by the V2 journal.
+ * This is additive: legacy V1 validators retain their existing status union.
+ */
+export function assertEconomicJournalTransaction(
+  transaction: LedgerTransactionV1,
+): asserts transaction is EconomicJournalTransactionV1 {
+  assertBalancedTransaction(transaction);
+  economyAssert(
+    transaction.status === "held" || transaction.status === "settled",
+    "INVALID_CONTRACT",
+    "Pending, failed, and derived reversed activity cannot be journal transactions",
   );
 }
 
