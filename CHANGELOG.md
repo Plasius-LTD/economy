@@ -6,16 +6,18 @@ promotion is owned by the approved GitHub CD workflow.
 ## Unreleased
 
 - **Added**
-  - (placeholder)
+  - Added the backward-compatible `EconomyPersistencePortV2` atomic mutation boundary for command/workflow evidence, owner-constrained wallets and allocations, versioned source-lot movements, balance/lifetime deltas, active-writer fencing, canonical chain-head locking, actor/subject/command-scoped idempotency, and outbox append.
+  - Added `EconomyQueryPortV1`, explicit multi-wallet portfolio scopes/results, deterministic wallet balance and lifetime helpers, and discriminated economic versus workflow activity with bounded cursor pagination.
+  - Added settlement-authoritative early-backer policy V2 while retaining the V1 evaluator unchanged.
 
 - **Changed**
-  - (placeholder)
+  - Documented exclusive spendable/reserved/held projection buckets, per-wallet progress, non-fungible portfolio aggregation, monotonic gross lifetime totals, and the V2 serializable mutation order.
 
 - **Fixed**
   - (placeholder)
 
 - **Security**
-  - (placeholder)
+  - New persistence contracts replace absolute balance writes with transaction-scoped atomic deltas and require source-lot/refund/version, active-writer-fence, scoped-idempotency, and canonical chain-head transitions to commit with the immutable journal.
 
 ## [0.2.0] - 2026-07-15
 

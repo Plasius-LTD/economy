@@ -53,6 +53,13 @@ reject non-string JSON values rather than coercing numbers into wire amounts.
 display-oriented `sourceLabel`. Filters and reconciliation must use `source`;
 localized UI must use `sourceLabel`.
 
+New read adapters should return the discriminated `WalletActivityEntryV1`.
+`economic` rows may be `held`, `settled`, or read-model-derived `reversed`;
+`workflow` rows alone may be `pending` or `failed`. The additive
+`EconomicJournalTransactionV1` narrows immutable journal writes to `held` or
+`settled`. A reversed display state is derived from a compensating transaction;
+the original journal row is never rewritten.
+
 ## Baseline GBP catalog
 
 `BASELINE_GBP_REFERENCE_RATE` is versioned product-copy metadata with
@@ -128,11 +135,26 @@ the source rows, revalidate them, append the balanced transaction, update the
 projection, save idempotency evidence, and append the outbox event within one
 serializable database transaction.
 
+`VersionedSourceLotV1` and `SourceLotMovementV1` make allocation, boost,
+reclaim, spend, hold, release, refund, chargeback, and reversal changes explicit.
+`applySourceLotMovement()` proves the signed amount deltas, refund-state
+transition, and exact optimistic-version increment. A V2 persistence adapter
+must append the movement evidence and compare-and-swap the projection as one
+operation.
+
 ## Early backers
 
 `evaluateEarlyBacker()` calculates provisional `pre_utility_backer_v1` status
 from net retained paid lots. It uses an inclusive public launch and exclusive
 first-public-spend cutoff. It does not express or promise a reward entitlement.
+
+Existing `evaluateEarlyBacker()` behavior is preserved for V1 consumers. The
+approved additive `evaluateEarlyBackerBySettlementV2()` policy treats
+`settledAt` as the sole inclusive-launch/exclusive-cutoff qualification event;
+purchase and credit timestamps remain ordering/provenance facts. It ignores
+settlements after `evaluatedAt`. The caller must derive both window timestamps
+from the entire public cohort and exclude non-production/test lots: staff,
+closed-beta, and test availability must never open or close the public window.
 
 ## Acquisition and future contracts
 
@@ -150,15 +172,54 @@ to household-allocatable is rejected.
 monthly/100 Token shape with `enabled: false`. Spend-request contracts likewise
 exist for future use but this package does not enable their creation.
 
+## Balance, lifetime, and portfolio reads
+
+`WalletBalanceProjectionV1` stores exclusive `spendable`, `reserved`, and
+`held` buckets. `createWalletBalanceSummary()` splits each wallet's spendable
+amount into independently usable whole-Token `available` value and a
+sub-Token `rewardProgress` remainder. `WalletBalanceDeltaV1` is an atomic add,
+never an absolute balance replacement.
+
+Lifetime counters are monotonic gross flows. Settled purchase/subscription
+credits add to `bought`; rewarded-ad, offerwall, event, and competition credits
+add to `earned`; source-wallet allocation/boost debits add to `allocated`;
+returns add to `reclaimed`; spend debits add to `spent`; and refund,
+chargeback, or reversal debits add to `reversed`. A reversal does not subtract
+from the earlier bought/earned counter.
+
+`EconomyQueryPortV1` keeps single-wallet reads and introduces an explicit
+`WalletPortfolioReadScopeV1`. A host portfolio may contain both a household
+treasury and a same-user-only personal reward wallet, and every component keeps
+its wallet ID, role, beneficiary, summary, and lifetime snapshot. Portfolio
+totals are display-only column sums: progress is deliberately not promoted
+across wallets, even if the sum reaches 1,000 TokenSubunits, because source and
+transfer restrictions may differ. Authorization must happen before the server
+constructs a portfolio scope.
+
+Activity reads use bounded opaque cursor pagination in stable descending
+`(occurredAt, activityId)` order. Each row retains the component `walletId`
+whose signed display amount it represents. Cursor contents and signatures are
+adapter concerns; `assertWalletActivityPageForPortfolio()` proves that a result
+never expands the authorized portfolio scope.
+
 ## Persistence ports
 
-Implement `EconomyPersistencePort` in the authoritative service. Runtime roles
-should execute approved posting procedures but must not update or delete journal
-rows directly. The adapter is responsible for:
+`EconomyPersistencePort` remains exported unchanged for existing consumers.
+New authoritative services should implement `EconomyPersistencePortV2`, whose
+unit of work deliberately omits V1's whole-projection overwrite. Runtime roles
+should execute approved posting procedures but must not update or delete
+journal rows directly. The V2 adapter is responsible for:
 
 - serializable row locking and optimistic versions;
-- unique transaction, idempotency, and provider-event constraints;
-- same-transaction projection and source-lot updates;
+- exact owner-constrained wallet access and household/child-constrained
+  allocation compare-and-swap;
+- immutable accepted-command and workflow-event append;
+- actor/subject/command-scoped idempotency plus unique transaction and
+  provider-event constraints;
+- active regional writer-fence validation and locked canonical chain-head
+  extension;
+- atomic wallet balance and monotonic lifetime deltas;
+- atomic source-lot movement append, refund-state update, and version advance;
 - transactional outbox append;
 - managed identity and least-privilege database access; and
 - immutable audit/integrity evidence outside this package.

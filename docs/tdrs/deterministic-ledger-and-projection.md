@@ -15,7 +15,8 @@
 
 ## Persistence expectations
 
-The site adapter implements the `EconomyPersistencePort` with a serializable
-database transaction, row/procedure security, same-transaction balance update,
-idempotency result, and transactional outbox append.
-
+Existing adapters may implement `EconomyPersistencePort`. New authoritative
+adapters implement `EconomyPersistencePortV2` with the atomic delta, source-lot
+movement, allocation CAS, chain-head, idempotency, and outbox sequence defined
+in [Atomic projections and read model V2](./atomic-projections-and-read-model-v2.md).
+V2 must not emulate an atomic add with V1's whole-projection replacement.
