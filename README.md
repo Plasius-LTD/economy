@@ -172,6 +172,45 @@ versions, exact payout values, and beneficiary/wallet IDs. ayeT and BitLabs lots
 are structurally restricted to `same-user-only`; changing a provider-earned lot
 to household-allocatable is rejected.
 
+### Deterministic paid-acquisition lifecycle
+
+`PurchaseIntentLifecycleV1` adds receipts and optimistic versions around the
+unchanged `PurchaseIntentV1`. `reducePurchaseIntentTransitions()` canonicalizes
+out-of-order checkout, payment, credit, expiry, cancellation, and dispute
+evidence. Exact retries collapse, conflicting ID reuse fails, and one intent
+can emit at most one stable intent-ID-scoped credit instruction. The transition
+name is `checkout-bound`; the published compatible intent status remains
+`checkout-created`.
+
+`reserveRollingPurchaseCaps()` mirrors one exact GBP-minor-unit reservation
+into payer and household aggregates. Both expected versions must match and both
+returned versions must be committed in one serializable transaction.
+Settlement keeps the amount in the rolling window; release and expiry free it.
+Exact command replays are no-ops, including after finalization. GBP minor units
+use canonical non-negative signed-64-bit strings through
+`parseGbpMinorUnits()` and `serializeGbpMinorUnits()`.
+
+`PaidLotLifecycleV1` separately preserves early-backer retained basis:
+
+- a dispute hold leaves retained basis unchanged;
+- a dispute win releases only the hold;
+- refunds, lost disputes, direct chargebacks, and the one permitted reversal
+  reduce retained basis exactly;
+- partial outcomes retain their unreversed remainder;
+- `createEarlyBackerRetentionFromPaidLot()` supplies a current
+  `PaidLotRetentionV1` for recalculation.
+
+Retained basis is not a spendable-balance claim. Before a compensation commits,
+the authoritative service must atomically reclaim allocated-but-unused value,
+reject value already spent or otherwise unavailable, append balanced journal
+postings, update source-lot/lifecycle projections, save idempotency evidence,
+and append the outbox. This package contains none of those provider or
+persistence adapters.
+
+These contracts do not enable checkout. The site must still enforce
+`economy.tokens.shopify.enabled`, payer/household authorization, legal gates,
+provider-signature verification, and server-derived purchase facts.
+
 `BASELINE_MONTHLY_SUBSCRIPTION_PLAN` preserves the provider-neutral future £10
 monthly/100 Token shape with `enabled: false`. Spend-request contracts likewise
 exist for future use but this package does not enable their creation.

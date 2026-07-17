@@ -12,7 +12,7 @@ export default defineConfig({
       reporter: ["text", "json", "html", "lcov"],
       reportsDirectory: "./coverage",
       include: ["src/**/*.ts"],
-      exclude: ["src/index.ts", "tests/**", "dist/**", "coverage/**"],
+      exclude: ["tests/**", "dist/**", "coverage/**"],
       thresholds: {
         lines: 80,
         functions: 80,
@@ -22,4 +22,3 @@ export default defineConfig({
     }
   }
 });
-

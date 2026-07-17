@@ -6,16 +6,23 @@ promotion is owned by the approved GitHub CD workflow.
 ## Unreleased
 
 - **Added**
-  - (placeholder)
+  - Added provider-neutral, versioned paid-acquisition lifecycles for
+    deterministic purchase-intent transitions, atomic payer/household rolling
+    cap reservation/finalization, and retained-lot refund/dispute arithmetic.
+  - Added exact GBP minor-unit parsing, one-credit/one-reversal replay guards,
+    current early-backer retained-basis inputs, and property/concurrency tests.
 
 - **Changed**
-  - (placeholder)
+  - Documented paid-acquisition compare-and-swap, allocation-reclaim, feature-
+    flag, and adapter trust boundaries while preserving all published V1 APIs.
 
 - **Fixed**
   - (placeholder)
 
 - **Security**
-  - (placeholder)
+  - Conflicting event-ID reuse, stale cap/lifecycle writers, half-mirrored cap
+    state, rolling-cap overspend, and duplicate economic effects now fail in
+    deterministic domain validation.
 
 ## [0.3.1] - 2026-07-16
 
