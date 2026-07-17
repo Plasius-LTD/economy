@@ -135,7 +135,9 @@ describe("purchase-intent lifecycle invariants", () => {
     });
     expect(result.creditInstruction).toBeUndefined();
     expect(result.lifecycle.intent.status).toBe("credited");
-    expect(result.lifecycle.receipts.at(-1)?.effect).toBe("ignored");
+    expect(result.lifecycle.effectiveTransitionIds).not.toContain(
+      duplicateCredit.transitionId,
+    );
 
     const exactReplay = applyPurchaseIntentTransition(
       result.lifecycle,
@@ -200,8 +202,8 @@ describe("purchase-intent lifecycle invariants", () => {
     expect(paidThenCancelled.lifecycle.intent.status).toBe(
       "paid-unreconciled",
     );
-    expect(paidThenCancelled.lifecycle.receipts.at(-1)?.effect).toBe(
-      "ignored",
+    expect(paidThenCancelled.lifecycle.effectiveTransitionIds).not.toContain(
+      "event:cancel",
     );
 
     expect(() =>
@@ -292,12 +294,62 @@ describe("purchase-intent lifecycle invariants", () => {
             result.lifecycle.receipts.filter(
               (receipt) =>
                 receipt.transition.transitionType === "credit-recorded" &&
-                receipt.effect === "state-changed",
+                result.lifecycle.effectiveTransitionIds.includes(
+                  receipt.transition.transitionId,
+                ),
             ),
           ).toHaveLength(1);
         },
       ),
     );
+  });
+
+  it("retains expiry evidence while late-delivered pre-expiry payment corrects the projection", () => {
+    const lifecycle = createPurchaseIntentLifecycle(purchaseIntent(), pack);
+    const expiry = intentTransition(
+      "expire",
+      "event:expiry-delivered-first",
+      "2026-07-16T10:15:00.000Z",
+    );
+    const storedExpiry = applyPurchaseIntentTransition(
+      lifecycle,
+      expiry,
+      lifecycle.version,
+      pack,
+    ).lifecycle;
+    expect(storedExpiry.intent.status).toBe("expired");
+
+    const latePayment = intentTransition(
+      "payment-observed",
+      "event:payment-delivered-late",
+      "2026-07-16T10:10:00.000Z",
+    );
+    const corrected = applyPurchaseIntentTransition(
+      storedExpiry,
+      latePayment,
+      storedExpiry.version,
+      pack,
+    );
+    expect(corrected).toMatchObject({
+      recorded: true,
+      stateChanged: true,
+      lifecycle: {
+        initialIntent: { status: "created" },
+        intent: { status: "paid-unreconciled" },
+        version: 3,
+      },
+    });
+    expect(
+      corrected.lifecycle.receipts.map(
+        (receipt) => receipt.transition.transitionId,
+      ),
+    ).toEqual([
+      "event:expiry-delivered-first",
+      "event:payment-delivered-late",
+    ]);
+    expect(corrected.lifecycle.effectiveTransitionIds).toEqual([
+      "event:payment-delivered-late",
+    ]);
   });
 });
 
@@ -520,6 +572,66 @@ describe("atomic rolling purchase caps", () => {
     expect(reserveReplay.payerUsageMinorUnits).toBe("5000");
   });
 
+  it("retains an expiry receipt while a late-delivered earlier settlement corrects both scopes", () => {
+    const { payer, household } = capStates();
+    const reserved = reserveRollingPurchaseCaps(
+      payer,
+      household,
+      reserveCommand(),
+      BASELINE_PURCHASE_LIMIT_POLICY,
+    );
+    const expired = transitionRollingPurchaseCapReservation(
+      reserved.payerState,
+      reserved.householdState,
+      capTransition("expire", "2026-07-16T10:15:00.000Z", {
+        transitionId: "transition:expiry-delivered-first",
+      }),
+      2,
+      2,
+      BASELINE_PURCHASE_LIMIT_POLICY,
+    );
+    expect(expired).toMatchObject({
+      reservation: { status: "expired" },
+      payerState: { version: 3 },
+      householdState: { version: 3 },
+    });
+
+    const corrected = transitionRollingPurchaseCapReservation(
+      expired.payerState,
+      expired.householdState,
+      capTransition("settle", "2026-07-16T10:10:00.000Z", {
+        transitionId: "transition:settlement-delivered-late",
+      }),
+      3,
+      3,
+      BASELINE_PURCHASE_LIMIT_POLICY,
+    );
+    expect(corrected).toMatchObject({
+      applied: true,
+      stateChanged: true,
+      reservation: {
+        status: "settled",
+        finalTransitionId: "transition:settlement-delivered-late",
+        finalizedAt: "2026-07-16T10:10:00.000Z",
+      },
+      payerState: { version: 4 },
+      householdState: { version: 4 },
+      payerUsageMinorUnits: "5000",
+      householdUsageMinorUnits: "5000",
+    });
+    expect(
+      corrected.reservation.transitionReceipts.map(
+        (receipt) => receipt.transition.transitionId,
+      ),
+    ).toEqual([
+      "transition:expiry-delivered-first",
+      "transition:settlement-delivered-late",
+    ]);
+    expect(
+      corrected.payerState.reservations[0]?.transitionReceipts,
+    ).toEqual(corrected.householdState.reservations[0]?.transitionReceipts);
+  });
+
   it("rejects over-order, early expiry, divergent mirrors, and conflicting reservation replays", () => {
     const { payer, household } = capStates();
     expect(() =>
@@ -582,6 +694,9 @@ describe("atomic rolling purchase caps", () => {
       );
     }
     expect(() => serializeGbpMinorUnits(2n ** 63n)).toThrowError(
+      expect.objectContaining({ code: "AMOUNT_OUT_OF_RANGE" }),
+    );
+    expect(() => parseGbpMinorUnits((2n ** 63n).toString(10))).toThrowError(
       expect.objectContaining({ code: "AMOUNT_OUT_OF_RANGE" }),
     );
   });
@@ -808,6 +923,84 @@ describe("retained paid-lot lifecycle", () => {
     expect(createEarlyBackerRetentionFromPaidLot(reduced).retainedAmount).toBe(
       "6000",
     );
+  });
+
+  it("rebuilds an incrementally persisted paid lot when an earlier event arrives late", () => {
+    const initial = createPaidLotLifecycle(sourceLot, provenance);
+    const deliveredFirst = applyPaidLotLifecycleEvent(
+      initial,
+      paidLotEvent(
+        "chargeback",
+        1_000n,
+        "chargeback:delivered-first",
+        "2026-07-16T10:04:00.000Z",
+      ),
+      1,
+    );
+    const deliveredLate = applyPaidLotLifecycleEvent(
+      deliveredFirst.lifecycle,
+      paidLotEvent(
+        "refund",
+        2_000n,
+        "refund:delivered-late",
+        "2026-07-16T10:03:00.000Z",
+      ),
+      2,
+    );
+
+    expect(deliveredLate).toMatchObject({
+      applied: true,
+      stateChanged: true,
+      lifecycle: {
+        version: 3,
+        retainedAmount: "7000",
+        reversedAmount: "3000",
+        refundedAmount: "2000",
+        chargebackAmount: "1000",
+        effectiveEventIds: [
+          "refund:delivered-late",
+          "chargeback:delivered-first",
+        ],
+      },
+      arithmetic: {
+        retainedDelta: "-2000",
+        heldDelta: "0",
+        reversedDelta: "2000",
+        refundedDelta: "2000",
+        chargebackDelta: "0",
+        oneTimeReversalDelta: "0",
+      },
+    });
+    expect(
+      deliveredLate.lifecycle.receipts.map((receipt) => receipt.event.eventId),
+    ).toEqual([
+      "chargeback:delivered-first",
+      "refund:delivered-late",
+    ]);
+
+    const exactReplay = applyPaidLotLifecycleEvent(
+      deliveredLate.lifecycle,
+      paidLotEvent(
+        "refund",
+        2_000n,
+        "refund:delivered-late",
+        "2026-07-16T10:03:00.000Z",
+      ),
+      1,
+    );
+    expect(exactReplay).toMatchObject({
+      applied: false,
+      stateChanged: false,
+      arithmetic: {
+        retainedDelta: "0",
+        heldDelta: "0",
+        reversedDelta: "0",
+        refundedDelta: "0",
+        chargebackDelta: "0",
+        oneTimeReversalDelta: "0",
+      },
+    });
+    expect(exactReplay.lifecycle).toBe(deliveredLate.lifecycle);
   });
 
   it("supports direct chargeback and only one one-time reversal", () => {

@@ -1,4 +1,4 @@
-import type { TokenPackV1, PurchaseIntentV1 } from "./acquisition.js";
+import type { PurchaseIntentV1, TokenPackV1 } from "./acquisition.js";
 import { assertPurchaseIntentBinding } from "./acquisition.js";
 import { compareUnicodeCodeUnits } from "./canonical-order.js";
 import {
@@ -37,23 +37,25 @@ export interface PurchaseIntentTransitionV1 {
   readonly providerCheckoutReferenceHash?: string;
 }
 
+/** Append-only receipt. Whether it is effective is a rebuildable projection. */
 export interface PurchaseIntentTransitionReceiptV1 {
   readonly schemaVersion: EconomyContractVersion;
   readonly transition: PurchaseIntentTransitionV1;
-  readonly effect: "state-changed" | "ignored";
 }
 
 /**
- * Versioned lifecycle projection. Receipts make retries deterministic while the
- * stable `creditRecorded` bit prevents a second credit from a different event.
+ * Versioned lifecycle projection. `initialIntent` never changes; every delivery
+ * is rebuilt from its append-only receipts in authoritative occurrence order.
  */
 export interface PurchaseIntentLifecycleV1 {
   readonly schemaVersion: EconomyContractVersion;
+  readonly initialIntent: PurchaseIntentV1;
   readonly intent: PurchaseIntentV1;
   readonly version: number;
   readonly creditRecorded: boolean;
   readonly disputeDisposition: PurchaseIntentDisputeDispositionV1;
   readonly receipts: readonly PurchaseIntentTransitionReceiptV1[];
+  readonly effectiveTransitionIds: readonly string[];
 }
 
 /** Stable instruction identity for the one permitted purchase credit. */
@@ -75,6 +77,13 @@ export interface PurchaseIntentTransitionResultV1 {
 export interface PurchaseIntentReductionV1 {
   readonly lifecycle: PurchaseIntentLifecycleV1;
   readonly creditInstructions: readonly PurchaseCreditInstructionV1[];
+}
+
+interface PurchaseIntentProjection {
+  readonly intent: PurchaseIntentV1;
+  readonly disputeDisposition: PurchaseIntentDisputeDispositionV1;
+  readonly effectiveTransitionIds: readonly string[];
+  readonly creditTransitionId?: string;
 }
 
 const TRANSITION_TYPES: readonly PurchaseIntentTransitionTypeV1[] = [
@@ -155,313 +164,24 @@ function sameTransition(
   );
 }
 
-/** Validates a complete purchase-intent lifecycle projection. */
-export function assertPurchaseIntentLifecycle(
-  lifecycle: PurchaseIntentLifecycleV1,
-  pack: TokenPackV1,
-): void {
-  economyAssert(
-    lifecycle.schemaVersion === ECONOMY_CONTRACT_VERSION,
-    "INVALID_CONTRACT",
-    "Unsupported purchase-intent lifecycle contract version",
+function sameIntent(left: PurchaseIntentV1, right: PurchaseIntentV1): boolean {
+  return (
+    left.schemaVersion === right.schemaVersion &&
+    left.intentId === right.intentId &&
+    left.payerAccountId === right.payerAccountId &&
+    left.receivingHouseholdId === right.receivingHouseholdId &&
+    left.receivingWalletId === right.receivingWalletId &&
+    left.packId === right.packId &&
+    left.catalogVersion === right.catalogVersion &&
+    left.expectedCurrency === right.expectedCurrency &&
+    left.expectedPriceMinorUnits === right.expectedPriceMinorUnits &&
+    left.grantAmount === right.grantAmount &&
+    left.status === right.status &&
+    left.createdAt === right.createdAt &&
+    left.expiresAt === right.expiresAt &&
+    left.providerCheckoutReferenceHash ===
+      right.providerCheckoutReferenceHash
   );
-  assertPurchaseIntentBinding(lifecycle.intent, pack);
-  economyAssert(
-    Number.isSafeInteger(lifecycle.version) &&
-      lifecycle.version === lifecycle.receipts.length + 1,
-    "INVALID_CONTRACT",
-    "Purchase-intent lifecycle version must match its receipt count",
-  );
-  economyAssert(
-    ["none", "open", "won", "lost"].includes(
-      lifecycle.disputeDisposition,
-    ),
-    "INVALID_CONTRACT",
-    "Purchase-intent dispute disposition is unsupported",
-  );
-  economyAssert(
-    lifecycle.creditRecorded ===
-      (lifecycle.intent.status === "credited" ||
-        lifecycle.intent.status === "disputed"),
-    "INVALID_CONTRACT",
-    "Purchase-intent credit projection is inconsistent with its status",
-  );
-  economyAssert(
-    lifecycle.intent.status === "disputed"
-      ? lifecycle.disputeDisposition === "open" ||
-          lifecycle.disputeDisposition === "lost"
-      : lifecycle.disputeDisposition !== "open" &&
-          lifecycle.disputeDisposition !== "lost",
-    "INVALID_CONTRACT",
-    "Purchase-intent dispute projection is inconsistent with its status",
-  );
-  const transitionIds = new Set<string>();
-  for (const receipt of lifecycle.receipts) {
-    economyAssert(
-      receipt.schemaVersion === ECONOMY_CONTRACT_VERSION &&
-        (receipt.effect === "state-changed" || receipt.effect === "ignored"),
-      "INVALID_CONTRACT",
-      "Purchase-intent receipt is invalid",
-    );
-    assertPurchaseIntentTransition(receipt.transition);
-    economyAssert(
-      receipt.transition.intentId === lifecycle.intent.intentId &&
-        !transitionIds.has(receipt.transition.transitionId),
-      "DUPLICATE_IDENTIFIER",
-      "Purchase-intent receipts must be unique and belong to the intent",
-    );
-    transitionIds.add(receipt.transition.transitionId);
-  }
-}
-
-/** Creates a versioned lifecycle around an existing valid V1 purchase intent. */
-export function createPurchaseIntentLifecycle(
-  intent: PurchaseIntentV1,
-  pack: TokenPackV1,
-): PurchaseIntentLifecycleV1 {
-  assertPurchaseIntentBinding(intent, pack);
-  return {
-    schemaVersion: ECONOMY_CONTRACT_VERSION,
-    intent,
-    version: 1,
-    creditRecorded:
-      intent.status === "credited" || intent.status === "disputed",
-    disputeDisposition: intent.status === "disputed" ? "open" : "none",
-    receipts: [],
-  };
-}
-
-function withRecordedReceipt(
-  lifecycle: PurchaseIntentLifecycleV1,
-  transition: PurchaseIntentTransitionV1,
-  intent: PurchaseIntentV1,
-  disputeDisposition: PurchaseIntentDisputeDispositionV1,
-  stateChanged: boolean,
-): PurchaseIntentLifecycleV1 {
-  return {
-    schemaVersion: ECONOMY_CONTRACT_VERSION,
-    intent,
-    version: lifecycle.version + 1,
-    creditRecorded:
-      intent.status === "credited" || intent.status === "disputed",
-    disputeDisposition,
-    receipts: [
-      ...lifecycle.receipts,
-      {
-        schemaVersion: ECONOMY_CONTRACT_VERSION,
-        transition,
-        effect: stateChanged ? "state-changed" : "ignored",
-      },
-    ],
-  };
-}
-
-function assertMatchingCheckoutBinding(
-  intent: PurchaseIntentV1,
-  checkoutHash: string,
-): void {
-  economyAssert(
-    intent.providerCheckoutReferenceHash === undefined ||
-      intent.providerCheckoutReferenceHash === checkoutHash,
-    "INVALID_CONTRACT",
-    "Purchase-intent transition conflicts with its checkout binding",
-  );
-}
-
-/**
- * Applies and records one event using compare-and-swap semantics. Exact event
- * retries succeed even with a stale expected version; conflicting reuse fails.
- */
-export function applyPurchaseIntentTransition(
-  lifecycle: PurchaseIntentLifecycleV1,
-  transition: PurchaseIntentTransitionV1,
-  expectedVersion: number,
-  pack: TokenPackV1,
-): PurchaseIntentTransitionResultV1 {
-  assertPurchaseIntentLifecycle(lifecycle, pack);
-  assertPurchaseIntentTransition(transition);
-  economyAssert(
-    transition.intentId === lifecycle.intent.intentId,
-    "INVALID_CONTRACT",
-    "Purchase-intent transition belongs to another intent",
-  );
-  const replay = lifecycle.receipts.find(
-    (receipt) =>
-      receipt.transition.transitionId === transition.transitionId,
-  );
-  if (replay !== undefined) {
-    economyAssert(
-      sameTransition(replay.transition, transition),
-      "DUPLICATE_IDENTIFIER",
-      "Purchase-intent transition ID was reused with different facts",
-    );
-    return { lifecycle, recorded: false, stateChanged: false };
-  }
-  economyAssert(
-    expectedVersion === lifecycle.version,
-    "INVALID_CONTRACT",
-    "Purchase-intent transition has a stale expected version",
-  );
-
-  const eventTime = parseIsoTimestamp(transition.occurredAt);
-  const createdAt = parseIsoTimestamp(lifecycle.intent.createdAt);
-  const expiresAt = parseIsoTimestamp(lifecycle.intent.expiresAt);
-  economyAssert(
-    eventTime >= createdAt,
-    "INVALID_TIME_WINDOW",
-    "Purchase-intent transition cannot precede intent creation",
-  );
-
-  let intent = lifecycle.intent;
-  let disputeDisposition = lifecycle.disputeDisposition;
-  let stateChanged = false;
-  let creditInstruction: PurchaseCreditInstructionV1 | undefined;
-
-  if (transition.transitionType === "checkout-bound") {
-    const checkoutHash = transition.providerCheckoutReferenceHash!;
-    assertMatchingCheckoutBinding(intent, checkoutHash);
-    if (intent.status === "created") {
-      economyAssert(
-        eventTime < expiresAt,
-        "INVALID_TIME_WINDOW",
-        "Checkout cannot be bound after purchase-intent expiry",
-      );
-      intent = {
-        ...intent,
-        status: "checkout-created",
-        providerCheckoutReferenceHash: checkoutHash,
-      };
-      stateChanged = true;
-    } else {
-      economyAssert(
-        !["expired", "cancelled"].includes(intent.status),
-        "INVALID_CONTRACT",
-        "A terminal purchase intent cannot bind a checkout",
-      );
-    }
-  } else if (transition.transitionType === "payment-observed") {
-    const checkoutHash = transition.providerCheckoutReferenceHash!;
-    assertMatchingCheckoutBinding(intent, checkoutHash);
-    if (intent.status === "created") {
-      economyAssert(
-        eventTime < expiresAt,
-        "INVALID_TIME_WINDOW",
-        "An unbound payment cannot occur after purchase-intent expiry",
-      );
-      intent = {
-        ...intent,
-        status: "paid-unreconciled",
-        providerCheckoutReferenceHash: checkoutHash,
-      };
-      stateChanged = true;
-    } else if (intent.status === "checkout-created") {
-      intent = { ...intent, status: "paid-unreconciled" };
-      stateChanged = true;
-    } else {
-      economyAssert(
-        !["expired", "cancelled"].includes(intent.status),
-        "INVALID_CONTRACT",
-        "A terminal purchase intent cannot observe payment",
-      );
-    }
-  } else if (transition.transitionType === "credit-recorded") {
-    if (intent.status === "paid-unreconciled") {
-      economyAssert(
-        !lifecycle.creditRecorded,
-        "INVALID_CONTRACT",
-        "Purchase intent has an inconsistent prior credit",
-      );
-      intent = { ...intent, status: "credited" };
-      disputeDisposition = "none";
-      stateChanged = true;
-      creditInstruction = {
-        schemaVersion: ECONOMY_CONTRACT_VERSION,
-        intentId: intent.intentId,
-        transitionId: transition.transitionId,
-        idempotencyKey: intent.intentId,
-      };
-    } else {
-      economyAssert(
-        lifecycle.creditRecorded,
-        "INVALID_CONTRACT",
-        "Purchase intent cannot be credited before authoritative payment",
-      );
-    }
-  } else if (transition.transitionType === "dispute-opened") {
-    if (
-      intent.status === "credited" &&
-      disputeDisposition === "none"
-    ) {
-      intent = { ...intent, status: "disputed" };
-      disputeDisposition = "open";
-      stateChanged = true;
-    } else {
-      economyAssert(
-        intent.status === "disputed" && disputeDisposition === "open",
-        "INVALID_CONTRACT",
-        "Dispute can open only once after purchase credit",
-      );
-    }
-  } else if (transition.transitionType === "dispute-won") {
-    if (
-      intent.status === "disputed" &&
-      disputeDisposition === "open"
-    ) {
-      intent = { ...intent, status: "credited" };
-      disputeDisposition = "won";
-      stateChanged = true;
-    } else {
-      economyAssert(
-        intent.status === "credited" && disputeDisposition === "won",
-        "INVALID_CONTRACT",
-        "Dispute-win transition requires one open dispute",
-      );
-    }
-  } else if (transition.transitionType === "dispute-lost") {
-    if (
-      intent.status === "disputed" &&
-      disputeDisposition === "open"
-    ) {
-      disputeDisposition = "lost";
-      stateChanged = true;
-    } else {
-      economyAssert(
-        intent.status === "disputed" && disputeDisposition === "lost",
-        "INVALID_CONTRACT",
-        "Dispute-loss transition requires one open dispute",
-      );
-    }
-  } else if (transition.transitionType === "cancel") {
-    if (intent.status === "created" || intent.status === "checkout-created") {
-      intent = { ...intent, status: "cancelled" };
-      stateChanged = true;
-    }
-  } else {
-    economyAssert(
-      eventTime >= expiresAt,
-      "INVALID_TIME_WINDOW",
-      "Expiry transition cannot precede purchase-intent expiry",
-    );
-    if (intent.status === "created" || intent.status === "checkout-created") {
-      intent = { ...intent, status: "expired" };
-      stateChanged = true;
-    }
-  }
-
-  const nextLifecycle = withRecordedReceipt(
-    lifecycle,
-    transition,
-    intent,
-    disputeDisposition,
-    stateChanged,
-  );
-  assertPurchaseIntentLifecycle(nextLifecycle, pack);
-  return {
-    lifecycle: nextLifecycle,
-    recorded: true,
-    stateChanged,
-    ...(creditInstruction === undefined ? {} : { creditInstruction }),
-  };
 }
 
 function compareTransitions(
@@ -481,12 +201,351 @@ function compareTransitions(
     : precedenceDifference;
 }
 
+function assertMatchingCheckoutBinding(
+  intent: PurchaseIntentV1,
+  checkoutHash: string,
+): void {
+  economyAssert(
+    intent.providerCheckoutReferenceHash === undefined ||
+      intent.providerCheckoutReferenceHash === checkoutHash,
+    "INVALID_CONTRACT",
+    "Purchase-intent transition conflicts with its checkout binding",
+  );
+}
+
+function projectPurchaseIntent(
+  initialIntent: PurchaseIntentV1,
+  transitions: readonly PurchaseIntentTransitionV1[],
+  pack: TokenPackV1,
+): PurchaseIntentProjection {
+  assertPurchaseIntentBinding(initialIntent, pack);
+  economyAssert(
+    initialIntent.status === "created" &&
+      initialIntent.providerCheckoutReferenceHash === undefined,
+    "INVALID_CONTRACT",
+    "Purchase-intent lifecycle requires immutable created intent facts",
+  );
+  const createdAt = parseIsoTimestamp(initialIntent.createdAt);
+  const expiresAt = parseIsoTimestamp(initialIntent.expiresAt);
+  let intent = initialIntent;
+  let disputeDisposition: PurchaseIntentDisputeDispositionV1 = "none";
+  let creditTransitionId: string | undefined;
+  const effectiveTransitionIds: string[] = [];
+
+  for (const transition of [...transitions].sort(compareTransitions)) {
+    assertPurchaseIntentTransition(transition);
+    economyAssert(
+      transition.intentId === initialIntent.intentId,
+      "INVALID_CONTRACT",
+      "Purchase-intent transition belongs to another intent",
+    );
+    const eventTime = parseIsoTimestamp(transition.occurredAt);
+    economyAssert(
+      eventTime >= createdAt,
+      "INVALID_TIME_WINDOW",
+      "Purchase-intent transition cannot precede intent creation",
+    );
+    let effective = false;
+
+    if (transition.transitionType === "checkout-bound") {
+      const checkoutHash = transition.providerCheckoutReferenceHash!;
+      assertMatchingCheckoutBinding(intent, checkoutHash);
+      if (intent.status === "created") {
+        economyAssert(
+          eventTime < expiresAt,
+          "INVALID_TIME_WINDOW",
+          "Checkout cannot be bound after purchase-intent expiry",
+        );
+        intent = {
+          ...intent,
+          status: "checkout-created",
+          providerCheckoutReferenceHash: checkoutHash,
+        };
+        effective = true;
+      } else {
+        economyAssert(
+          !["expired", "cancelled"].includes(intent.status),
+          "INVALID_CONTRACT",
+          "A terminal purchase intent cannot bind a checkout",
+        );
+      }
+    } else if (transition.transitionType === "payment-observed") {
+      const checkoutHash = transition.providerCheckoutReferenceHash!;
+      assertMatchingCheckoutBinding(intent, checkoutHash);
+      economyAssert(
+        eventTime < expiresAt,
+        "INVALID_TIME_WINDOW",
+        "Authoritative payment time must precede purchase-intent expiry",
+      );
+      if (intent.status === "created") {
+        intent = {
+          ...intent,
+          status: "paid-unreconciled",
+          providerCheckoutReferenceHash: checkoutHash,
+        };
+        effective = true;
+      } else if (intent.status === "checkout-created") {
+        intent = { ...intent, status: "paid-unreconciled" };
+        effective = true;
+      } else {
+        economyAssert(
+          !["expired", "cancelled"].includes(intent.status),
+          "INVALID_CONTRACT",
+          "A terminal purchase intent cannot observe payment",
+        );
+      }
+    } else if (transition.transitionType === "credit-recorded") {
+      if (intent.status === "paid-unreconciled") {
+        intent = { ...intent, status: "credited" };
+        disputeDisposition = "none";
+        creditTransitionId = transition.transitionId;
+        effective = true;
+      } else {
+        economyAssert(
+          intent.status === "credited" || intent.status === "disputed",
+          "INVALID_CONTRACT",
+          "Purchase intent cannot be credited before authoritative payment",
+        );
+      }
+    } else if (transition.transitionType === "dispute-opened") {
+      if (intent.status === "credited" && disputeDisposition === "none") {
+        intent = { ...intent, status: "disputed" };
+        disputeDisposition = "open";
+        effective = true;
+      } else {
+        economyAssert(
+          intent.status === "disputed" && disputeDisposition === "open",
+          "INVALID_CONTRACT",
+          "Dispute can open only once after purchase credit",
+        );
+      }
+    } else if (transition.transitionType === "dispute-won") {
+      if (intent.status === "disputed" && disputeDisposition === "open") {
+        intent = { ...intent, status: "credited" };
+        disputeDisposition = "won";
+        effective = true;
+      } else {
+        economyAssert(
+          intent.status === "credited" && disputeDisposition === "won",
+          "INVALID_CONTRACT",
+          "Dispute-win transition requires one open dispute",
+        );
+      }
+    } else if (transition.transitionType === "dispute-lost") {
+      if (intent.status === "disputed" && disputeDisposition === "open") {
+        disputeDisposition = "lost";
+        effective = true;
+      } else {
+        economyAssert(
+          intent.status === "disputed" && disputeDisposition === "lost",
+          "INVALID_CONTRACT",
+          "Dispute-loss transition requires one open dispute",
+        );
+      }
+    } else if (transition.transitionType === "cancel") {
+      if (intent.status === "created" || intent.status === "checkout-created") {
+        intent = { ...intent, status: "cancelled" };
+        effective = true;
+      }
+    } else {
+      economyAssert(
+        eventTime >= expiresAt,
+        "INVALID_TIME_WINDOW",
+        "Expiry transition cannot precede purchase-intent expiry",
+      );
+      if (intent.status === "created" || intent.status === "checkout-created") {
+        intent = { ...intent, status: "expired" };
+        effective = true;
+      }
+    }
+
+    if (effective) {
+      effectiveTransitionIds.push(transition.transitionId);
+    }
+  }
+
+  return {
+    intent,
+    disputeDisposition,
+    effectiveTransitionIds,
+    ...(creditTransitionId === undefined ? {} : { creditTransitionId }),
+  };
+}
+
+/** Validates and deterministically rebuilds a lifecycle projection. */
+export function assertPurchaseIntentLifecycle(
+  lifecycle: PurchaseIntentLifecycleV1,
+  pack: TokenPackV1,
+): void {
+  economyAssert(
+    lifecycle.schemaVersion === ECONOMY_CONTRACT_VERSION,
+    "INVALID_CONTRACT",
+    "Unsupported purchase-intent lifecycle contract version",
+  );
+  economyAssert(
+    Number.isSafeInteger(lifecycle.version) &&
+      lifecycle.version === lifecycle.receipts.length + 1,
+    "INVALID_CONTRACT",
+    "Purchase-intent lifecycle version must match its receipt count",
+  );
+  const transitionIds = new Set<string>();
+  for (const receipt of lifecycle.receipts) {
+    economyAssert(
+      receipt.schemaVersion === ECONOMY_CONTRACT_VERSION,
+      "INVALID_CONTRACT",
+      "Purchase-intent receipt is invalid",
+    );
+    assertPurchaseIntentTransition(receipt.transition);
+    economyAssert(
+      receipt.transition.intentId === lifecycle.initialIntent.intentId &&
+        !transitionIds.has(receipt.transition.transitionId),
+      "DUPLICATE_IDENTIFIER",
+      "Purchase-intent receipts must be unique and belong to the intent",
+    );
+    transitionIds.add(receipt.transition.transitionId);
+  }
+  const projection = projectPurchaseIntent(
+    lifecycle.initialIntent,
+    lifecycle.receipts.map((receipt) => receipt.transition),
+    pack,
+  );
+  economyAssert(
+    sameIntent(projection.intent, lifecycle.intent) &&
+      lifecycle.creditRecorded ===
+        (projection.intent.status === "credited" ||
+          projection.intent.status === "disputed") &&
+      lifecycle.disputeDisposition === projection.disputeDisposition &&
+      lifecycle.effectiveTransitionIds.length ===
+        projection.effectiveTransitionIds.length &&
+      lifecycle.effectiveTransitionIds.every(
+        (transitionId, index) =>
+          transitionId === projection.effectiveTransitionIds[index],
+      ),
+    "INVALID_CONTRACT",
+    "Purchase-intent lifecycle does not match its immutable event rebuild",
+  );
+}
+
+/** Creates a lifecycle from immutable, server-created purchase-intent facts. */
+export function createPurchaseIntentLifecycle(
+  initialIntent: PurchaseIntentV1,
+  pack: TokenPackV1,
+): PurchaseIntentLifecycleV1 {
+  const projection = projectPurchaseIntent(initialIntent, [], pack);
+  return {
+    schemaVersion: ECONOMY_CONTRACT_VERSION,
+    initialIntent,
+    intent: projection.intent,
+    version: 1,
+    creditRecorded: false,
+    disputeDisposition: projection.disputeDisposition,
+    receipts: [],
+    effectiveTransitionIds: [],
+  };
+}
+
+function sameProjection(
+  lifecycle: PurchaseIntentLifecycleV1,
+  projection: PurchaseIntentProjection,
+): boolean {
+  return (
+    sameIntent(lifecycle.intent, projection.intent) &&
+    lifecycle.disputeDisposition === projection.disputeDisposition &&
+    lifecycle.effectiveTransitionIds.length ===
+      projection.effectiveTransitionIds.length &&
+    lifecycle.effectiveTransitionIds.every(
+      (transitionId, index) =>
+        transitionId === projection.effectiveTransitionIds[index],
+    )
+  );
+}
+
+/**
+ * Appends one event and rebuilds all receipts by authoritative occurrence time.
+ * A late pre-expiry payment can therefore correct a stored expiry without
+ * deleting the expiry receipt. Exact retries succeed before version checking.
+ */
+export function applyPurchaseIntentTransition(
+  lifecycle: PurchaseIntentLifecycleV1,
+  transition: PurchaseIntentTransitionV1,
+  expectedVersion: number,
+  pack: TokenPackV1,
+): PurchaseIntentTransitionResultV1 {
+  assertPurchaseIntentLifecycle(lifecycle, pack);
+  assertPurchaseIntentTransition(transition);
+  economyAssert(
+    transition.intentId === lifecycle.initialIntent.intentId,
+    "INVALID_CONTRACT",
+    "Purchase-intent transition belongs to another intent",
+  );
+  const replay = lifecycle.receipts.find(
+    (receipt) => receipt.transition.transitionId === transition.transitionId,
+  );
+  if (replay !== undefined) {
+    economyAssert(
+      sameTransition(replay.transition, transition),
+      "DUPLICATE_IDENTIFIER",
+      "Purchase-intent transition ID was reused with different facts",
+    );
+    return { lifecycle, recorded: false, stateChanged: false };
+  }
+  economyAssert(
+    expectedVersion === lifecycle.version,
+    "INVALID_CONTRACT",
+    "Purchase-intent transition has a stale expected version",
+  );
+
+  const receipts: readonly PurchaseIntentTransitionReceiptV1[] = [
+    ...lifecycle.receipts,
+    { schemaVersion: ECONOMY_CONTRACT_VERSION, transition },
+  ];
+  const projection = projectPurchaseIntent(
+    lifecycle.initialIntent,
+    receipts.map((receipt) => receipt.transition),
+    pack,
+  );
+  const stateChanged = !sameProjection(lifecycle, projection);
+  const nextLifecycle: PurchaseIntentLifecycleV1 = {
+    schemaVersion: ECONOMY_CONTRACT_VERSION,
+    initialIntent: lifecycle.initialIntent,
+    intent: projection.intent,
+    version: lifecycle.version + 1,
+    creditRecorded:
+      projection.intent.status === "credited" ||
+      projection.intent.status === "disputed",
+    disputeDisposition: projection.disputeDisposition,
+    receipts,
+    effectiveTransitionIds: projection.effectiveTransitionIds,
+  };
+  assertPurchaseIntentLifecycle(nextLifecycle, pack);
+
+  const producesCredit =
+    projection.creditTransitionId === transition.transitionId &&
+    !lifecycle.creditRecorded &&
+    nextLifecycle.creditRecorded;
+  const creditInstruction: PurchaseCreditInstructionV1 | undefined =
+    producesCredit
+      ? {
+          schemaVersion: ECONOMY_CONTRACT_VERSION,
+          intentId: nextLifecycle.intent.intentId,
+          transitionId: transition.transitionId,
+          idempotencyKey: nextLifecycle.intent.intentId,
+        }
+      : undefined;
+  return {
+    lifecycle: nextLifecycle,
+    recorded: true,
+    stateChanged,
+    ...(creditInstruction === undefined ? {} : { creditInstruction }),
+  };
+}
+
 /**
  * Reduces an unordered delivery batch in canonical event-time/type/ID order.
  * Exact duplicate IDs collapse; conflicting duplicate facts are rejected.
  */
 export function reducePurchaseIntentTransitions(
-  intent: PurchaseIntentV1,
+  initialIntent: PurchaseIntentV1,
   transitions: readonly PurchaseIntentTransitionV1[],
   pack: TokenPackV1,
 ): PurchaseIntentReductionV1 {
@@ -505,7 +564,7 @@ export function reducePurchaseIntentTransitions(
     }
   }
 
-  let lifecycle = createPurchaseIntentLifecycle(intent, pack);
+  let lifecycle = createPurchaseIntentLifecycle(initialIntent, pack);
   const creditInstructions: PurchaseCreditInstructionV1[] = [];
   for (const transition of [...unique.values()].sort(compareTransitions)) {
     const result = applyPurchaseIntentTransition(

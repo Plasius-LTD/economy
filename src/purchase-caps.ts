@@ -68,6 +68,20 @@ export type PurchaseCapReservationTransitionTypeV1 =
   | "release"
   | "expire";
 
+export interface PurchaseCapReservationTransitionV1 {
+  readonly schemaVersion: EconomyContractVersion;
+  readonly transitionId: string;
+  readonly reservationId: string;
+  readonly transitionType: PurchaseCapReservationTransitionTypeV1;
+  readonly occurredAt: IsoTimestamp;
+}
+
+/** Append-only cap evidence; effectiveness is rebuilt from occurrence order. */
+export interface PurchaseCapReservationTransitionReceiptV1 {
+  readonly schemaVersion: EconomyContractVersion;
+  readonly transition: PurchaseCapReservationTransitionV1;
+}
+
 /** One purchase amount mirrored into payer and household cap aggregates. */
 export interface PurchaseCapReservationV1 {
   readonly schemaVersion: EconomyContractVersion;
@@ -78,8 +92,10 @@ export interface PurchaseCapReservationV1 {
   readonly status: PurchaseCapReservationStatusV1;
   readonly reservedAt: IsoTimestamp;
   readonly expiresAt: IsoTimestamp;
+  /** Derived winning transition; every delivery remains in `transitionReceipts`. */
   readonly finalTransitionId?: string;
   readonly finalizedAt?: IsoTimestamp;
+  readonly transitionReceipts: readonly PurchaseCapReservationTransitionReceiptV1[];
 }
 
 /** Optimistic aggregate for exactly one payer or household rolling ceiling. */
@@ -103,21 +119,25 @@ export interface ReservePurchaseCapsCommandV1 {
   readonly expectedHouseholdVersion: number;
 }
 
-export interface PurchaseCapReservationTransitionV1 {
-  readonly schemaVersion: EconomyContractVersion;
-  readonly transitionId: string;
-  readonly reservationId: string;
-  readonly transitionType: PurchaseCapReservationTransitionTypeV1;
-  readonly occurredAt: IsoTimestamp;
-}
-
 export interface PurchaseCapMutationResultV1 {
   readonly payerState: RollingPurchaseCapStateV1;
   readonly householdState: RollingPurchaseCapStateV1;
   readonly reservation: PurchaseCapReservationV1;
+  /** True when a reservation or transition receipt was newly recorded. */
   readonly applied: boolean;
+  readonly stateChanged: boolean;
   readonly payerUsageMinorUnits: GbpMinorUnitString;
   readonly householdUsageMinorUnits: GbpMinorUnitString;
+}
+
+interface ReservationBinding {
+  readonly schemaVersion: EconomyContractVersion;
+  readonly reservationId: string;
+  readonly payerAccountId: AccountId;
+  readonly householdId: HouseholdId;
+  readonly priceMinorUnits: GbpMinorUnitString;
+  readonly reservedAt: IsoTimestamp;
+  readonly expiresAt: IsoTimestamp;
 }
 
 const RESERVATION_STATUSES: readonly PurchaseCapReservationStatusV1[] = [
@@ -127,72 +147,237 @@ const RESERVATION_STATUSES: readonly PurchaseCapReservationStatusV1[] = [
   "expired",
 ];
 
-/** Validates one mirrored rolling-cap reservation. */
-export function assertPurchaseCapReservation(
-  reservation: PurchaseCapReservationV1,
+const TRANSITION_PRECEDENCE: Readonly<
+  Record<PurchaseCapReservationTransitionTypeV1, number>
+> = {
+  settle: 0,
+  release: 1,
+  expire: 2,
+};
+
+/** Validates one rolling-cap transition envelope. */
+export function assertPurchaseCapReservationTransition(
+  transition: PurchaseCapReservationTransitionV1,
 ): void {
   economyAssert(
-    reservation.schemaVersion === ECONOMY_CONTRACT_VERSION,
+    transition.schemaVersion === ECONOMY_CONTRACT_VERSION,
+    "INVALID_CONTRACT",
+    "Unsupported purchase-cap transition contract version",
+  );
+  assertEconomyIdentifier(transition.transitionId, "transitionId");
+  assertEconomyIdentifier(transition.reservationId, "reservationId");
+  economyAssert(
+    ["settle", "release", "expire"].includes(transition.transitionType),
+    "INVALID_CONTRACT",
+    "Purchase-cap transition type is unsupported",
+  );
+  parseIsoTimestamp(transition.occurredAt);
+}
+
+function sameTransition(
+  left: PurchaseCapReservationTransitionV1,
+  right: PurchaseCapReservationTransitionV1,
+): boolean {
+  return (
+    left.schemaVersion === right.schemaVersion &&
+    left.transitionId === right.transitionId &&
+    left.reservationId === right.reservationId &&
+    left.transitionType === right.transitionType &&
+    left.occurredAt === right.occurredAt
+  );
+}
+
+function compareTransitions(
+  left: PurchaseCapReservationTransitionV1,
+  right: PurchaseCapReservationTransitionV1,
+): number {
+  const timeDifference =
+    parseIsoTimestamp(left.occurredAt) - parseIsoTimestamp(right.occurredAt);
+  if (timeDifference !== 0) {
+    return timeDifference;
+  }
+  const precedenceDifference =
+    TRANSITION_PRECEDENCE[left.transitionType] -
+    TRANSITION_PRECEDENCE[right.transitionType];
+  return precedenceDifference === 0
+    ? compareUnicodeCodeUnits(left.transitionId, right.transitionId)
+    : precedenceDifference;
+}
+
+function assertBinding(binding: ReservationBinding): void {
+  economyAssert(
+    binding.schemaVersion === ECONOMY_CONTRACT_VERSION,
     "INVALID_CONTRACT",
     "Unsupported purchase-cap reservation contract version",
   );
-  assertEconomyIdentifier(reservation.reservationId, "reservationId");
-  assertEconomyIdentifier(reservation.payerAccountId, "payerAccountId");
-  assertEconomyIdentifier(reservation.householdId, "householdId");
+  assertEconomyIdentifier(binding.reservationId, "reservationId");
+  assertEconomyIdentifier(binding.payerAccountId, "payerAccountId");
+  assertEconomyIdentifier(binding.householdId, "householdId");
   economyAssert(
-    parseGbpMinorUnits(reservation.priceMinorUnits) > 0n,
+    parseGbpMinorUnits(binding.priceMinorUnits) > 0n,
     "INVALID_AMOUNT",
     "Purchase-cap reservation amount must be positive",
   );
+  economyAssert(
+    parseIsoTimestamp(binding.expiresAt) >
+      parseIsoTimestamp(binding.reservedAt),
+    "INVALID_TIME_WINDOW",
+    "Purchase-cap reservation expiry must follow its creation",
+  );
+}
+
+function bindingFromReservation(
+  reservation: PurchaseCapReservationV1,
+): ReservationBinding {
+  return {
+    schemaVersion: reservation.schemaVersion,
+    reservationId: reservation.reservationId,
+    payerAccountId: reservation.payerAccountId,
+    householdId: reservation.householdId,
+    priceMinorUnits: reservation.priceMinorUnits,
+    reservedAt: reservation.reservedAt,
+    expiresAt: reservation.expiresAt,
+  };
+}
+
+function projectReservation(
+  binding: ReservationBinding,
+  receipts: readonly PurchaseCapReservationTransitionReceiptV1[],
+): PurchaseCapReservationV1 {
+  assertBinding(binding);
+  const reservedAt = parseIsoTimestamp(binding.reservedAt);
+  const expiresAt = parseIsoTimestamp(binding.expiresAt);
+  const transitionIds = new Set<string>();
+  for (const receipt of receipts) {
+    economyAssert(
+      receipt.schemaVersion === ECONOMY_CONTRACT_VERSION,
+      "INVALID_CONTRACT",
+      "Unsupported purchase-cap transition receipt version",
+    );
+    assertPurchaseCapReservationTransition(receipt.transition);
+    economyAssert(
+      receipt.transition.reservationId === binding.reservationId &&
+        !transitionIds.has(receipt.transition.transitionId),
+      "DUPLICATE_IDENTIFIER",
+      "Purchase-cap receipts must be unique and belong to the reservation",
+    );
+    transitionIds.add(receipt.transition.transitionId);
+  }
+
+  let status: PurchaseCapReservationStatusV1 = "reserved";
+  let finalTransitionId: string | undefined;
+  let finalizedAt: IsoTimestamp | undefined;
+  for (const receipt of [...receipts].sort((left, right) =>
+    compareTransitions(left.transition, right.transition),
+  )) {
+    const transition = receipt.transition;
+    const occurredAt = parseIsoTimestamp(transition.occurredAt);
+    economyAssert(
+      occurredAt >= reservedAt,
+      "INVALID_TIME_WINDOW",
+      "Purchase-cap transition cannot precede reservation",
+    );
+    if (transition.transitionType === "settle") {
+      economyAssert(
+        occurredAt < expiresAt,
+        "INVALID_TIME_WINDOW",
+        "Purchase-cap settlement must use payment time before expiry",
+      );
+    } else if (transition.transitionType === "release") {
+      economyAssert(
+        occurredAt < expiresAt,
+        "INVALID_TIME_WINDOW",
+        "Purchase-cap release must precede reservation expiry",
+      );
+    } else {
+      economyAssert(
+        occurredAt >= expiresAt,
+        "INVALID_TIME_WINDOW",
+        "Purchase-cap reservation cannot expire before its deadline",
+      );
+    }
+    if (status === "reserved") {
+      status =
+        transition.transitionType === "settle"
+          ? "settled"
+          : transition.transitionType === "release"
+            ? "released"
+            : "expired";
+      finalTransitionId = transition.transitionId;
+      finalizedAt = transition.occurredAt;
+    }
+  }
+
+  return {
+    ...binding,
+    status,
+    ...(finalTransitionId === undefined
+      ? {}
+      : { finalTransitionId, finalizedAt: finalizedAt! }),
+    transitionReceipts: receipts,
+  };
+}
+
+function sameReservationFacts(
+  left: PurchaseCapReservationV1,
+  right: PurchaseCapReservationV1,
+): boolean {
+  return (
+    left.schemaVersion === right.schemaVersion &&
+    left.reservationId === right.reservationId &&
+    left.payerAccountId === right.payerAccountId &&
+    left.householdId === right.householdId &&
+    left.priceMinorUnits === right.priceMinorUnits &&
+    left.status === right.status &&
+    left.reservedAt === right.reservedAt &&
+    left.expiresAt === right.expiresAt &&
+    left.finalTransitionId === right.finalTransitionId &&
+    left.finalizedAt === right.finalizedAt &&
+    left.transitionReceipts.length === right.transitionReceipts.length &&
+    left.transitionReceipts.every((receipt, index) => {
+      const other = right.transitionReceipts[index];
+      return (
+        other !== undefined &&
+        receipt.schemaVersion === other.schemaVersion &&
+        sameTransition(receipt.transition, other.transition)
+      );
+    })
+  );
+}
+
+function sameReservationBinding(
+  reservation: PurchaseCapReservationV1,
+  proposed: PurchaseCapReservationV1,
+): boolean {
+  return (
+    reservation.schemaVersion === proposed.schemaVersion &&
+    reservation.reservationId === proposed.reservationId &&
+    reservation.payerAccountId === proposed.payerAccountId &&
+    reservation.householdId === proposed.householdId &&
+    reservation.priceMinorUnits === proposed.priceMinorUnits &&
+    reservation.reservedAt === proposed.reservedAt &&
+    reservation.expiresAt === proposed.expiresAt
+  );
+}
+
+/** Validates one mirrored rolling-cap reservation and its complete rebuild. */
+export function assertPurchaseCapReservation(
+  reservation: PurchaseCapReservationV1,
+): void {
   economyAssert(
     RESERVATION_STATUSES.includes(reservation.status),
     "INVALID_CONTRACT",
     "Purchase-cap reservation status is unsupported",
   );
-  const reservedAt = parseIsoTimestamp(reservation.reservedAt);
-  const expiresAt = parseIsoTimestamp(reservation.expiresAt);
-  economyAssert(
-    expiresAt > reservedAt,
-    "INVALID_TIME_WINDOW",
-    "Purchase-cap reservation expiry must follow its creation",
+  const projected = projectReservation(
+    bindingFromReservation(reservation),
+    reservation.transitionReceipts,
   );
-  const terminal = reservation.status !== "reserved";
   economyAssert(
-    terminal ===
-      (reservation.finalTransitionId !== undefined &&
-        reservation.finalizedAt !== undefined),
+    sameReservationFacts(projected, reservation),
     "INVALID_CONTRACT",
-    "Purchase-cap terminal evidence must be present exactly for final states",
+    "Purchase-cap reservation does not match its immutable event rebuild",
   );
-  if (
-    reservation.finalTransitionId !== undefined &&
-    reservation.finalizedAt !== undefined
-  ) {
-    assertEconomyIdentifier(
-      reservation.finalTransitionId,
-      "finalTransitionId",
-    );
-    const finalizedAt = parseIsoTimestamp(reservation.finalizedAt);
-    economyAssert(
-      finalizedAt >= reservedAt,
-      "INVALID_TIME_WINDOW",
-      "Purchase-cap finalization cannot precede reservation",
-    );
-    if (reservation.status === "settled") {
-      economyAssert(
-        finalizedAt < expiresAt,
-        "INVALID_TIME_WINDOW",
-        "Purchase-cap settlement must use authoritative payment time before expiry",
-      );
-    }
-    if (reservation.status === "expired") {
-      economyAssert(
-        finalizedAt >= expiresAt,
-        "INVALID_TIME_WINDOW",
-        "Purchase-cap expiry cannot finalize before its deadline",
-      );
-    }
-  }
 }
 
 /** Validates one payer or household rolling-cap aggregate. */
@@ -210,29 +395,17 @@ export function assertRollingPurchaseCapState(
     "Purchase-cap scope type is unsupported",
   );
   assertEconomyIdentifier(state.scopeId, "scopeId");
-  economyAssert(
-    Number.isSafeInteger(state.version) && state.version >= 1,
-    "INVALID_CONTRACT",
-    "Purchase-cap state version must be a positive safe integer",
-  );
-  const ids = new Set<string>();
-  const finalTransitionIds = new Set<string>();
+  const reservationIds = new Set<string>();
+  const transitionIds = new Set<string>();
+  let receiptCount = 0;
   for (const reservation of state.reservations) {
     assertPurchaseCapReservation(reservation);
     economyAssert(
-      !ids.has(reservation.reservationId),
+      !reservationIds.has(reservation.reservationId),
       "DUPLICATE_IDENTIFIER",
       "Purchase-cap state cannot repeat a reservation",
     );
-    ids.add(reservation.reservationId);
-    if (reservation.finalTransitionId !== undefined) {
-      economyAssert(
-        !finalTransitionIds.has(reservation.finalTransitionId),
-        "DUPLICATE_IDENTIFIER",
-        "Purchase-cap state cannot repeat a final transition ID",
-      );
-      finalTransitionIds.add(reservation.finalTransitionId);
-    }
+    reservationIds.add(reservation.reservationId);
     economyAssert(
       state.scopeType === "payer"
         ? reservation.payerAccountId === state.scopeId
@@ -240,15 +413,21 @@ export function assertRollingPurchaseCapState(
       "INVALID_CONTRACT",
       "Purchase-cap reservation belongs to another aggregate scope",
     );
+    for (const receipt of reservation.transitionReceipts) {
+      economyAssert(
+        !transitionIds.has(receipt.transition.transitionId),
+        "DUPLICATE_IDENTIFIER",
+        "Purchase-cap state cannot repeat a transition ID",
+      );
+      transitionIds.add(receipt.transition.transitionId);
+      receiptCount += 1;
+    }
   }
-  const finalReservationCount = state.reservations.filter(
-    (reservation) => reservation.status !== "reserved",
-  ).length;
   economyAssert(
-    state.version ===
-      1 + state.reservations.length + finalReservationCount,
+    Number.isSafeInteger(state.version) &&
+      state.version === 1 + state.reservations.length + receiptCount,
     "INVALID_CONTRACT",
-    "Purchase-cap state version must match reservation transitions",
+    "Purchase-cap state version must match reservation and receipt counts",
   );
 }
 
@@ -267,39 +446,6 @@ function assertAggregatePair(
       householdState.scopeId === householdId,
     "INVALID_CONTRACT",
     "Purchase-cap aggregate pair does not match payer and household",
-  );
-}
-
-function sameReservationFacts(
-  left: PurchaseCapReservationV1,
-  right: PurchaseCapReservationV1,
-): boolean {
-  return (
-    left.schemaVersion === right.schemaVersion &&
-    left.reservationId === right.reservationId &&
-    left.payerAccountId === right.payerAccountId &&
-    left.householdId === right.householdId &&
-    left.priceMinorUnits === right.priceMinorUnits &&
-    left.status === right.status &&
-    left.reservedAt === right.reservedAt &&
-    left.expiresAt === right.expiresAt &&
-    left.finalTransitionId === right.finalTransitionId &&
-    left.finalizedAt === right.finalizedAt
-  );
-}
-
-function sameReservationBinding(
-  reservation: PurchaseCapReservationV1,
-  proposed: PurchaseCapReservationV1,
-): boolean {
-  return (
-    reservation.schemaVersion === proposed.schemaVersion &&
-    reservation.reservationId === proposed.reservationId &&
-    reservation.payerAccountId === proposed.payerAccountId &&
-    reservation.householdId === proposed.householdId &&
-    reservation.priceMinorUnits === proposed.priceMinorUnits &&
-    reservation.reservedAt === proposed.reservedAt &&
-    reservation.expiresAt === proposed.expiresAt
   );
 }
 
@@ -404,6 +550,7 @@ function resultWithUsage(
   householdState: RollingPurchaseCapStateV1,
   reservation: PurchaseCapReservationV1,
   applied: boolean,
+  stateChanged: boolean,
   checkedAt: IsoTimestamp,
   policy: PurchaseLimitPolicyV1,
 ): PurchaseCapMutationResultV1 {
@@ -412,6 +559,7 @@ function resultWithUsage(
     householdState,
     reservation,
     applied,
+    stateChanged,
     payerUsageMinorUnits: calculateRollingPurchaseCapUsage(
       payerState,
       checkedAt,
@@ -440,9 +588,16 @@ export function reserveRollingPurchaseCaps(
     "INVALID_CONTRACT",
     "Unsupported purchase-cap reservation command version",
   );
-  assertEconomyIdentifier(command.reservationId, "reservationId");
-  assertEconomyIdentifier(command.payerAccountId, "payerAccountId");
-  assertEconomyIdentifier(command.householdId, "householdId");
+  const binding: ReservationBinding = {
+    schemaVersion: ECONOMY_CONTRACT_VERSION,
+    reservationId: command.reservationId,
+    payerAccountId: command.payerAccountId,
+    householdId: command.householdId,
+    priceMinorUnits: command.priceMinorUnits,
+    reservedAt: command.reservedAt,
+    expiresAt: command.expiresAt,
+  };
+  assertBinding(binding);
   assertAggregatePair(
     payerState,
     householdState,
@@ -450,26 +605,7 @@ export function reserveRollingPurchaseCaps(
     command.householdId,
   );
   assertPurchaseLimitPolicy(policy);
-  const amount = parseGbpMinorUnits(command.priceMinorUnits);
-  const reservedAt = parseIsoTimestamp(command.reservedAt);
-  const expiresAt = parseIsoTimestamp(command.expiresAt);
-  economyAssert(
-    amount > 0n && expiresAt > reservedAt,
-    "INVALID_TIME_WINDOW",
-    "Purchase-cap reservation must have positive amount and future expiry",
-  );
-
-  const proposed: PurchaseCapReservationV1 = {
-    schemaVersion: ECONOMY_CONTRACT_VERSION,
-    reservationId: command.reservationId,
-    payerAccountId: command.payerAccountId,
-    householdId: command.householdId,
-    priceMinorUnits: command.priceMinorUnits,
-    status: "reserved",
-    reservedAt: command.reservedAt,
-    expiresAt: command.expiresAt,
-  };
-  assertPurchaseCapReservation(proposed);
+  const proposed = projectReservation(binding, []);
   const replay = findMirroredReservation(
     payerState,
     householdState,
@@ -486,6 +622,7 @@ export function reserveRollingPurchaseCaps(
       householdState,
       replay,
       false,
+      false,
       replay.finalizedAt ?? command.reservedAt,
       policy,
     );
@@ -497,6 +634,7 @@ export function reserveRollingPurchaseCaps(
     "INVALID_CONTRACT",
     "Purchase-cap reservation has a stale aggregate version",
   );
+  const amount = parseGbpMinorUnits(command.priceMinorUnits);
   economyAssert(
     amount <= parseGbpMinorUnits(policy.maxOrderPriceMinorUnits),
     "INSUFFICIENT_BALANCE",
@@ -540,6 +678,7 @@ export function reserveRollingPurchaseCaps(
     nextHousehold,
     proposed,
     true,
+    true,
     command.reservedAt,
     policy,
   );
@@ -560,7 +699,29 @@ function replaceReservation(
   };
 }
 
-/** Settles, releases, or expires one mirrored reservation exactly once. */
+function findTransitionById(
+  state: RollingPurchaseCapStateV1,
+  transitionId: string,
+): {
+  readonly reservationId: string;
+  readonly transition: PurchaseCapReservationTransitionV1;
+} | undefined {
+  for (const reservation of state.reservations) {
+    const receipt = reservation.transitionReceipts.find(
+      (candidate) => candidate.transition.transitionId === transitionId,
+    );
+    if (receipt !== undefined) {
+      return { reservationId: reservation.reservationId, transition: receipt.transition };
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Appends a settle/release/expiry receipt and rebuilds authoritative order. A
+ * late-delivered pre-expiry settlement corrects a stored expiry while retaining
+ * both receipts. Payer and household versions still advance atomically.
+ */
 export function transitionRollingPurchaseCapReservation(
   payerState: RollingPurchaseCapStateV1,
   householdState: RollingPurchaseCapStateV1,
@@ -569,19 +730,7 @@ export function transitionRollingPurchaseCapReservation(
   expectedHouseholdVersion: number,
   policy: PurchaseLimitPolicyV1,
 ): PurchaseCapMutationResultV1 {
-  economyAssert(
-    transition.schemaVersion === ECONOMY_CONTRACT_VERSION,
-    "INVALID_CONTRACT",
-    "Unsupported purchase-cap transition contract version",
-  );
-  assertEconomyIdentifier(transition.transitionId, "transitionId");
-  assertEconomyIdentifier(transition.reservationId, "reservationId");
-  economyAssert(
-    ["settle", "release", "expire"].includes(transition.transitionType),
-    "INVALID_CONTRACT",
-    "Purchase-cap transition type is unsupported",
-  );
-  const occurredAt = parseIsoTimestamp(transition.occurredAt);
+  assertPurchaseCapReservationTransition(transition);
   assertRollingPurchaseCapState(payerState);
   assertRollingPurchaseCapState(householdState);
   const current = findMirroredReservation(
@@ -602,26 +751,25 @@ export function transitionRollingPurchaseCapReservation(
   );
   assertPurchaseLimitPolicy(policy);
 
-  const targetStatus: PurchaseCapReservationStatusV1 =
-    transition.transitionType === "settle"
-      ? "settled"
-      : transition.transitionType === "release"
-        ? "released"
-        : "expired";
-  const transitionOwner = payerState.reservations.find(
-    (reservation) =>
-      reservation.finalTransitionId === transition.transitionId,
+  const payerExisting = findTransitionById(
+    payerState,
+    transition.transitionId,
+  );
+  const householdExisting = findTransitionById(
+    householdState,
+    transition.transitionId,
   );
   economyAssert(
-    transitionOwner === undefined ||
-      transitionOwner.reservationId === current.reservationId,
-    "DUPLICATE_IDENTIFIER",
-    "Purchase-cap transition ID already finalized another reservation",
+    (payerExisting === undefined) === (householdExisting === undefined),
+    "INVALID_CONTRACT",
+    "Purchase-cap transition must exist in both scopes atomically",
   );
-  if (current.finalTransitionId === transition.transitionId) {
+  if (payerExisting !== undefined && householdExisting !== undefined) {
     economyAssert(
-      current.status === targetStatus &&
-        current.finalizedAt === transition.occurredAt,
+      payerExisting.reservationId === transition.reservationId &&
+        householdExisting.reservationId === transition.reservationId &&
+        sameTransition(payerExisting.transition, transition) &&
+        sameTransition(householdExisting.transition, transition),
       "DUPLICATE_IDENTIFIER",
       "Purchase-cap transition ID was reused with different facts",
     );
@@ -630,20 +778,6 @@ export function transitionRollingPurchaseCapReservation(
       householdState,
       current,
       false,
-      transition.occurredAt,
-      policy,
-    );
-  }
-  if (current.status !== "reserved") {
-    economyAssert(
-      current.status === targetStatus,
-      "INVALID_CONTRACT",
-      "Purchase-cap reservation already has a conflicting final state",
-    );
-    return resultWithUsage(
-      payerState,
-      householdState,
-      current,
       false,
       transition.occurredAt,
       policy,
@@ -655,34 +789,15 @@ export function transitionRollingPurchaseCapReservation(
     "INVALID_CONTRACT",
     "Purchase-cap transition has a stale aggregate version",
   );
-  const reservedAt = parseIsoTimestamp(current.reservedAt);
-  const expiresAt = parseIsoTimestamp(current.expiresAt);
-  economyAssert(
-    occurredAt >= reservedAt,
-    "INVALID_TIME_WINDOW",
-    "Purchase-cap transition cannot precede reservation",
-  );
-  if (transition.transitionType === "settle") {
-    economyAssert(
-      occurredAt < expiresAt,
-      "INVALID_TIME_WINDOW",
-      "Purchase-cap settlement must use payment time before expiry",
-    );
-  } else if (transition.transitionType === "expire") {
-    economyAssert(
-      occurredAt >= expiresAt,
-      "INVALID_TIME_WINDOW",
-      "Purchase-cap reservation cannot expire before its deadline",
-    );
-  }
 
-  const replacement: PurchaseCapReservationV1 = {
-    ...current,
-    status: targetStatus,
-    finalTransitionId: transition.transitionId,
-    finalizedAt: transition.occurredAt,
-  };
-  assertPurchaseCapReservation(replacement);
+  const replacement = projectReservation(bindingFromReservation(current), [
+    ...current.transitionReceipts,
+    { schemaVersion: ECONOMY_CONTRACT_VERSION, transition },
+  ]);
+  const stateChanged =
+    replacement.status !== current.status ||
+    replacement.finalTransitionId !== current.finalTransitionId ||
+    replacement.finalizedAt !== current.finalizedAt;
   const nextPayer = replaceReservation(payerState, replacement);
   const nextHousehold = replaceReservation(householdState, replacement);
   return resultWithUsage(
@@ -690,6 +805,7 @@ export function transitionRollingPurchaseCapReservation(
     nextHousehold,
     replacement,
     true,
+    stateChanged,
     transition.occurredAt,
     policy,
   );
