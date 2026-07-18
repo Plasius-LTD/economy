@@ -245,6 +245,37 @@ whose signed display amount it represents. Cursor contents and signatures are
 adapter concerns; `assertWalletActivityPageForPortfolio()` proves that a result
 never expands the authorized portfolio scope.
 
+## Pseudonymous Admin reporting
+
+`AdminEconomyReportingQueryPortV1` defines provider-neutral activity and trend
+results for governed finance operations. It does not grant access or query a
+database. A host must authenticate the caller, enforce the stored rollout flags
+`economy.admin-history.enabled` and `mcp.admin-economy-history.enabled` as
+applicable, re-check the finance capability, and use a least-privilege
+reporting projection.
+
+Activity rows are deliberately narrow:
+
+- timestamp, normalized type/status/source, and exact signed TokenSubunits;
+- a bounded display-safe label selected from a source-owned allowlist; and
+- opaque row and subject aliases produced by a versioned,
+  audience-separated HMAC adapter.
+
+The validator rejects undeclared properties, including raw account, wallet,
+transaction, order, payment, provider-event, idempotency, and journal-integrity
+identifiers. It also rejects provider-specific source names. Result metadata
+fixes `rawIdentifiersIncluded` to `false`.
+
+Activity pages are capped at 100 rows. The deterministic default reporting
+window is 30 days and the interactive maximum is 365 days. Hourly trends are
+limited to 31 days; daily trends may cover the maximum window. Trend cohorts
+with fewer than five distinct subjects contain only a suppression marker.
+
+Reported trend points can carry a 28-window same-time median/MAD indicator plus
+an absolute minimum. The package uses exact integer arithmetic and a documented
+lower median; indicators are review alerts only and never mutate the ledger.
+Routine contracts contain no identity-resolution operation.
+
 ## Persistence ports
 
 `EconomyPersistencePort` remains exported unchanged for existing consumers.

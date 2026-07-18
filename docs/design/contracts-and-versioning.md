@@ -67,12 +67,37 @@ in all results. Aggregate columns are display totals, not a fungibility claim;
 in particular, sub-Token progress is not promoted between a household treasury
 and a same-user-only personal wallet.
 
+## Admin reporting boundary
+
+`AdminEconomyReportingQueryPortV1` is an additive, read-only contract for
+bounded operational reporting. Activity entries deliberately omit account,
+wallet, transaction, order, payment, provider-event, idempotency, and journal
+integrity identifiers. Runtime validators use exact property allowlists, so
+extra fields fail instead of being silently serialized.
+
+The consuming service supplies opaque HMAC-derived aliases and records their
+audience and version in result metadata. The package validates the alias shape
+but does not generate aliases or know the secret. Interactive activity reads
+default to 30 days, are capped at 365 days and 100 rows, and use stable
+cursor-compatible sorts.
+
+Trend points below five distinct subjects are suppression records with no
+counts or amounts. Reported points may include a deterministic 28-window
+lower-median/MAD advisory with an absolute threshold. This contract never
+authorizes or mutates a financial record.
+
 ## Trust boundary
 
 Contracts are data and validation primitives. A caller must still derive
 identity from a trusted session, enforce flags/capabilities/relationships,
 verify provider evidence over raw bytes, acquire persistence locks, and commit
 the journal/projection/outbox atomically.
+
+Admin reporting callers must additionally enforce finance capabilities and
+stored rollout flags, use a least-privilege projection identity, generate
+audience-separated aliases, apply query deadlines/rate limits, send
+private/no-store responses, and audit only safe query shapes. Identity
+resolution is outside the routine reporting contract.
 
 V2 persistence deliberately offers no unscoped wallet mutation lookup.
 Allocation mutation/read lookups require the server-derived household and

@@ -6,16 +6,21 @@ promotion is owned by the approved GitHub CD workflow.
 ## Unreleased
 
 - **Added**
-  - (placeholder)
+  - Added bounded, provider-neutral Admin Token activity, trend, suppression,
+    pseudonym metadata, and explainable 28-window median/MAD contracts.
 
 - **Changed**
-  - (placeholder)
+  - Exported a read-only Admin reporting query port while keeping
+    authentication, HMAC aliases, persistence, MCP, and remediation outside the
+    package.
 
 - **Fixed**
   - (placeholder)
 
 - **Security**
-  - (placeholder)
+  - Admin reporting validators reject undeclared identifying fields,
+    provider-specific sources, unsafe labels, malformed aliases, cohorts below
+    five, and interactive queries beyond their supported bounds.
 
 ## [0.3.2] - 2026-07-17
 
