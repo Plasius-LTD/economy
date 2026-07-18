@@ -245,6 +245,59 @@ whose signed display amount it represents. Cursor contents and signatures are
 adapter concerns; `assertWalletActivityPageForPortfolio()` proves that a result
 never expands the authorized portfolio scope.
 
+## Pseudonymous Admin reporting
+
+`AdminEconomyReportingQueryPortV1` defines provider-neutral activity and trend
+results for governed finance operations. It does not grant access or query a
+database. A host must authenticate the caller, enforce the stored rollout flags
+`economy.admin-history.enabled` and `mcp.admin-economy-history.enabled` as
+applicable, re-check the finance capability, and use a least-privilege
+reporting projection.
+
+Activity rows are deliberately narrow:
+
+- timestamp, normalized type/status/source, and exact signed TokenSubunits;
+- a closed non-identifying label code that the presentation layer maps to
+  localized text; and
+- distinct opaque row and subject aliases produced by a versioned,
+  audience- and purpose-separated HMAC adapter.
+
+The label-code allowlist is `token-acquisition`, `token-spend`,
+`token-reversal`, `token-hold`, `token-activity-failed`,
+`token-system-adjustment`, and `token-activity-unclassified`. A label must also
+be valid for its activity type.
+
+Failure rows may use exact zero when a failed workflow has no related economic
+transaction or attempted amount. Zero remains invalid for every economically
+meaningful activity type.
+
+The validator accepts only plain enumerable data properties and rejects
+serialization hooks and undeclared properties, including raw account, wallet,
+transaction, order, payment, provider-event, idempotency, and journal-integrity
+identifiers. It also rejects provider-specific source names and free-form
+labels. Result metadata fixes `rawIdentifiersIncluded` to `false`.
+
+Activity pages are capped at 100 rows. Cursor values use a versioned `c1.`
+base64url confidentiality-protected opaque format and cannot contain raw
+identifiers. A resumed request carries both that value and its trusted,
+server-decoded binding to the original window, sort, filters, pseudonym
+audience, and version. Result metadata echoes the normalized filter. The
+deterministic default reporting window is 30 days and the interactive maximum
+is 365 days.
+
+Hourly trends are limited to 31 days and daily trends may cover the maximum
+window. The result ceiling is 3,720 points, covering all five activity types
+through the maximum hourly window. Trend cohorts with fewer than five distinct
+subjects contain only a suppression marker.
+
+Reported trend points carry either a calculated 28-window same-time
+conventional median/MAD indicator or an explicit unavailable result. Only
+non-suppressed baseline cohorts may enter the calculation. Median and MAD
+values use reduced exact rational TokenSubunits with denominators up to two,
+so no floating point or rounding is introduced. Indicators are review alerts
+only and never mutate the ledger. Routine contracts contain no
+identity-resolution operation.
+
 ## Persistence ports
 
 `EconomyPersistencePort` remains exported unchanged for existing consumers.
