@@ -257,24 +257,46 @@ reporting projection.
 Activity rows are deliberately narrow:
 
 - timestamp, normalized type/status/source, and exact signed TokenSubunits;
-- a bounded display-safe label selected from a source-owned allowlist; and
-- opaque row and subject aliases produced by a versioned,
-  audience-separated HMAC adapter.
+- a closed non-identifying label code that the presentation layer maps to
+  localized text; and
+- distinct opaque row and subject aliases produced by a versioned,
+  audience- and purpose-separated HMAC adapter.
 
-The validator rejects undeclared properties, including raw account, wallet,
+The label-code allowlist is `token-acquisition`, `token-spend`,
+`token-reversal`, `token-hold`, `token-activity-failed`,
+`token-system-adjustment`, and `token-activity-unclassified`. A label must also
+be valid for its activity type.
+
+Failure rows may use exact zero when a failed workflow has no related economic
+transaction or attempted amount. Zero remains invalid for every economically
+meaningful activity type.
+
+The validator accepts only plain enumerable data properties and rejects
+serialization hooks and undeclared properties, including raw account, wallet,
 transaction, order, payment, provider-event, idempotency, and journal-integrity
-identifiers. It also rejects provider-specific source names. Result metadata
-fixes `rawIdentifiersIncluded` to `false`.
+identifiers. It also rejects provider-specific source names and free-form
+labels. Result metadata fixes `rawIdentifiersIncluded` to `false`.
 
-Activity pages are capped at 100 rows. The deterministic default reporting
-window is 30 days and the interactive maximum is 365 days. Hourly trends are
-limited to 31 days; daily trends may cover the maximum window. Trend cohorts
-with fewer than five distinct subjects contain only a suppression marker.
+Activity pages are capped at 100 rows. Cursor values use a versioned `c1.`
+base64url confidentiality-protected opaque format and cannot contain raw
+identifiers. A resumed request carries both that value and its trusted,
+server-decoded binding to the original window, sort, filters, pseudonym
+audience, and version. Result metadata echoes the normalized filter. The
+deterministic default reporting window is 30 days and the interactive maximum
+is 365 days.
 
-Reported trend points can carry a 28-window same-time median/MAD indicator plus
-an absolute minimum. The package uses exact integer arithmetic and a documented
-lower median; indicators are review alerts only and never mutate the ledger.
-Routine contracts contain no identity-resolution operation.
+Hourly trends are limited to 31 days and daily trends may cover the maximum
+window. The result ceiling is 3,720 points, covering all five activity types
+through the maximum hourly window. Trend cohorts with fewer than five distinct
+subjects contain only a suppression marker.
+
+Reported trend points carry either a calculated 28-window same-time
+conventional median/MAD indicator or an explicit unavailable result. Only
+non-suppressed baseline cohorts may enter the calculation. Median and MAD
+values use reduced exact rational TokenSubunits with denominators up to two,
+so no floating point or rounding is introduced. Indicators are review alerts
+only and never mutate the ledger. Routine contracts contain no
+identity-resolution operation.
 
 ## Persistence ports
 

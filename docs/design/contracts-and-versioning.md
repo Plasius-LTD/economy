@@ -72,19 +72,25 @@ and a same-user-only personal wallet.
 `AdminEconomyReportingQueryPortV1` is an additive, read-only contract for
 bounded operational reporting. Activity entries deliberately omit account,
 wallet, transaction, order, payment, provider-event, idempotency, and journal
-integrity identifiers. Runtime validators use exact property allowlists, so
-extra fields fail instead of being silently serialized.
+integrity identifiers. Runtime validators accept plain enumerable data
+properties only, reject serialization hooks, and use exact property and safe
+label-code allowlists.
 
 The consuming service supplies opaque HMAC-derived aliases and records their
 audience and version in result metadata. The package validates the alias shape
 but does not generate aliases or know the secret. Interactive activity reads
-default to 30 days, are capped at 365 days and 100 rows, and use stable
-cursor-compatible sorts.
+default to 30 days, are capped at 365 days and 100 rows, and use stable sorts.
+Resumed requests include a confidentiality-protected opaque cursor with no raw
+identifiers and a trusted decoded binding to their normalized window, sort,
+filters, pseudonym audience, and version. Result metadata echoes the normalized
+filter. Failure rows alone may carry zero when no economic amount exists.
 
 Trend points below five distinct subjects are suppression records with no
-counts or amounts. Reported points may include a deterministic 28-window
-lower-median/MAD advisory with an absolute threshold. This contract never
-authorizes or mutates a financial record.
+counts or amounts. Reported points carry either a deterministic conventional
+28-window median/MAD advisory over privacy-eligible baselines or an explicit
+unavailable reason. Exact rational statistics preserve half-TokenSubunit
+values. Complete hourly results are bounded to 3,720
+points. This contract never authorizes or mutates a financial record.
 
 ## Trust boundary
 

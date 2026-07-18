@@ -13,14 +13,18 @@ promotion is owned by the approved GitHub CD workflow.
   - Exported a read-only Admin reporting query port while keeping
     authentication, HMAC aliases, persistence, MCP, and remediation outside the
     package.
+  - Bound resumed activity queries to trusted decoded cursor scope, made
+    unavailable anomaly baselines explicit, and preserved conventional
+    median/MAD values as exact rational TokenSubunits.
 
 - **Fixed**
   - (placeholder)
 
 - **Security**
   - Admin reporting validators reject undeclared identifying fields,
-    provider-specific sources, unsafe labels, malformed aliases, cohorts below
-    five, and interactive queries beyond their supported bounds.
+    provider-specific sources, free-form labels, serialization hooks, malformed
+    aliases, cursor replay across query scopes, cohorts below five, and
+    interactive queries beyond their supported bounds.
 
 ## [0.3.2] - 2026-07-17
 
