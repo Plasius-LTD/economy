@@ -321,7 +321,9 @@ Coverage must remain at least 80%, and every changed source file must appear in
 LCOV. Generated property tests cover exact arithmetic, double-entry balance,
 projection rebuilds, idempotency, reversals, lot isolation, and allocation
 non-negativity. npm publication is performed only by the approved GitHub CD
-workflow.
+workflow on configurable trusted self-hosted runners. Release LCOV and the
+CycloneDX SBOM remain retained even when an external coverage or npm provenance
+service is unavailable.
 
 ## Security
 

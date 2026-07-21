@@ -17,7 +17,9 @@ promotion is owned by the approved GitHub CD workflow.
   - (placeholder)
 
 - **Fixed**
-  - (placeholder)
+  - Routed release preparation through the configurable trusted self-hosted
+    runner policy, retained LCOV/SBOM evidence, and avoided unsupported npm
+    provenance on self-hosted publication.
 
 - **Security**
   - Module settlement now requires a pending entitlement identifier, while
