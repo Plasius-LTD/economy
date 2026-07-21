@@ -4,10 +4,11 @@ Provider-neutral TypeScript contracts and deterministic invariants for the
 Plasius sitewide Token economy.
 
 This package models exact TokenSubunit amounts, immutable double-entry journal
-transactions, source lots, family gameplay reservations, early-backer basis,
-future spend requests, acquisition contracts, projections, and persistence
-ports. It intentionally contains no HTTP, authentication, provider SDK,
-database driver, secret, or Azure implementation.
+transactions, source lots, family gameplay reservations, purpose-bound learning
+module allowances, early-backer basis, future spend requests, acquisition
+contracts, projections, and persistence ports. It intentionally contains no
+HTTP, authentication, provider SDK, database driver, secret, or Azure
+implementation.
 
 ## Product boundary
 
@@ -159,6 +160,44 @@ purchase and credit timestamps remain ordering/provenance facts. It ignores
 settlements after `evaluatedAt`. The caller must derive both window timestamps
 from the entire public cohort and exclude non-production/test lots: staff,
 closed-beta, and test availability must never open or close the public window.
+
+## Junior Coder Module Allowances
+
+`ModuleAllowanceV1` is a Guardian-funded reservation for one linked child and
+one purpose: purchasing independently sellable Junior Coder module
+entitlements. It is deliberately separate from `GameplayAllocationV1`; callers
+cannot spend gameplay value as a learning allowance or silently move learning
+value into gameplay.
+
+The purchase contracts implement the deterministic parts of:
+
+```text
+immutable quote -> allowance hold -> pending entitlement
+  -> settle spend -> activate entitlement -> durable receipt
+```
+
+An immutable quote binds the exact module version, Token price, child,
+Guardian acknowledgement, catalog version, and requirements-manifest version
+plus canonical SHA-256 reference. This makes software-only declarations and
+robotics bills of materials durable pre-purchase evidence even after a live
+manifest changes.
+
+`createModuleSpendHold()` moves whole Tokens from available to held value.
+`settleModuleSpendHold()` requires a pending entitlement ID before it can move
+held value to spent value. `releaseModuleSpendHold()` returns failed or expired
+holds to the same Module Allowance. `createModulePurchaseReceipt()` accepts only
+matching quote and settled-hold evidence. `reconcileModulePurchase()` returns
+one forward-safe repair instruction and fails closed to manual review for a
+settled debit without an entitlement or an active paid entitlement without a
+settled debit.
+
+These functions produce immutable next-state projections; they do not perform
+authorization or persistence. The consuming service must evaluate
+`learning.junior-coder.purchase.enabled`, enforce Guardian/child capabilities,
+store actor/subject/operation-scoped idempotency evidence, and compare-and-swap
+allowance and hold versions alongside the balanced journal, entitlement,
+receipt, and outbox in a serializable transaction. A disabled feature may still
+release and reconcile existing holds, but must reject new quotes and purchases.
 
 ## Acquisition and future contracts
 
