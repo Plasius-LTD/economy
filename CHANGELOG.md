@@ -6,16 +6,25 @@ promotion is owned by the approved GitHub CD workflow.
 ## Unreleased
 
 - **Added**
-  - (placeholder)
+  - Added purpose-bound `ModuleAllowanceV1` contracts with exact funding,
+    reclaim, quote, hold, settle, release, receipt, and reconciliation
+    invariants for Guardian-funded Junior Coder module entitlements.
+  - Added immutable pre-purchase requirements-manifest evidence and fail-closed
+    cross-service reconciliation outcomes without changing
+    `GameplayAllocationV1`.
 
 - **Changed**
   - (placeholder)
 
 - **Fixed**
-  - (placeholder)
+  - Routed release preparation through the configurable trusted self-hosted
+    runner policy, retained LCOV/SBOM evidence, and avoided unsupported npm
+    provenance on self-hosted publication.
 
 - **Security**
-  - (placeholder)
+  - Module settlement now requires a pending entitlement identifier, while
+    inconsistent settled-debit or active-entitlement observations require
+    blocking manual review.
 
 ## [0.3.2] - 2026-07-17
 

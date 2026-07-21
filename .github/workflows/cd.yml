@@ -136,6 +136,15 @@ jobs:
           fail_ci_if_error: false
           slug: ${{ github.repository }}
 
+      - name: Retain release coverage evidence
+        if: steps.release.outputs.should_finalize_release == 'true' && steps.codecov_coverage.outputs.available == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-coverage-lcov
+          path: ${{ steps.codecov_coverage.outputs.files }}
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Report Codecov upload warning
         if: always() && steps.codecov.outcome == 'failure'
         run: echo "::warning title=Codecov upload unavailable::Release coverage upload failed or was quota-limited; release validation and publication will continue."
@@ -143,6 +152,15 @@ jobs:
       - name: Generate SBOM (CycloneDX)
         if: steps.release.outputs.should_finalize_release == 'true'
         run: npm sbom --sbom-format=cyclonedx --sbom-type=library --omit dev > sbom.cdx.json
+
+      - name: Retain release SBOM
+        if: steps.release.outputs.should_finalize_release == 'true' && hashFiles('sbom.cdx.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-sbom
+          path: sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 90
 
       - name: Attest SBOM
         if: steps.release.outputs.should_finalize_release == 'true' && hashFiles('sbom.cdx.json') != ''
@@ -234,6 +252,7 @@ jobs:
           FLAGS: ${{ steps.release.outputs.flags }}
           PACKAGE_NAME: ${{ steps.release.outputs.package_name }}
           PACKAGE_VERSION: ${{ steps.release.outputs.release_version }}
+          RUNNER_ENVIRONMENT: ${{ runner.environment }}
         run: |
           set -euo pipefail
           if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
@@ -246,7 +265,12 @@ jobs:
             exit 0
           fi
 
-          npm publish ${FLAGS} --provenance --registry https://registry.npmjs.org
+          if [ "${RUNNER_ENVIRONMENT}" = "github-hosted" ]; then
+            npm publish ${FLAGS} --provenance --registry https://registry.npmjs.org
+          else
+            echo "::notice title=npm provenance unavailable::Publishing with the protected NPM_TOKEN because npm provenance does not support self-hosted runners."
+            npm publish ${FLAGS} --registry https://registry.npmjs.org
+          fi
 
       - name: Publish GitHub Release
         if: steps.release.outputs.should_finalize_release == 'true'

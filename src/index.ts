@@ -7,6 +7,7 @@ export * from "./errors.js";
 export * from "./integrity.js";
 export * from "./ledger.js";
 export * from "./lots.js";
+export * from "./module-allowances.js";
 export * from "./operations.js";
 export * from "./paid-lots.js";
 export * from "./ports/persistence.js";
