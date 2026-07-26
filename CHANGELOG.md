@@ -12,7 +12,9 @@ promotion is owned by the approved GitHub CD workflow.
   - (placeholder)
 
 - **Fixed**
-  - (placeholder)
+  - Selected the verified current release-branch HEAD for publication so a
+    `bump=none` recovery cannot check out workflow tooling from an older package
+    metadata commit.
 
 - **Security**
   - (placeholder)

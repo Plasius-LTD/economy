@@ -31,6 +31,11 @@ for bump selection, so the requested bump is applied to the highest local,
 registry, or tag version. `bump=none` remains the explicit recovery path for
 already-prepared metadata.
 
+Release preparation returns the verified current release-branch HEAD as the
+publication commit after version and changelog checks pass. This keeps
+`bump=none` recovery attached to the current reviewed workflow tooling rather
+than the historical commit that last changed `package.json`.
+
 The release retains LCOV for 30 days and its CycloneDX SBOM for 90 days. npm
 currently requires a cloud-hosted runner for provenance, so publication on a
 self-hosted runner uses the protected `NPM_TOKEN` without making an unsupported
@@ -49,6 +54,8 @@ attestation through the existing attestation step.
   repository rather than an untracked runner-image change.
 - Version recovery no longer turns a requested bump into an impossible
   duplicate publication when the current npm version is already live.
+- Recovery releases include the reviewed workflow and installer files present
+  on the verified release branch.
 - Deterministic validation, retained evidence and GitHub SBOM attestation remain
   release gates; npm provenance can be re-enabled when self-hosted support is
   officially available.
