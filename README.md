@@ -194,6 +194,60 @@ projection verification outcomes. `EconomyIntegrityAnchorManifestV1` defines
 canonical hourly Merkle evidence while signing, keys, and storage remain
 infrastructure responsibilities.
 
+## Recoverable acknowledgements and portable receipts
+
+The additive recovery protocol protects the acknowledgement boundary without
+turning an evidence store into a second economy writer:
+
+- `EconomyRecoveryAcceptanceEnvelopeV1` binds the provider-neutral audited
+  command, accepted receipt, HMAC idempotency fingerprint, and an AES-256-GCM
+  sealed reconstruction payload before command processing;
+- `EconomyRecoveryCommittedResultV1` binds that exact acceptance to the
+  terminal result receipt, authority commit/head, sequence, optional completed
+  transaction, and sealed reconstruction payload after the authority commits;
+- `EconomyRegionalEvidenceReceiptV1` is a signed, sequence-addressed,
+  hash-chained retention assertion for the byte-identical acceptance or result
+  stored in one evidence region; and
+- `EconomyPortableCustomerReceiptV1` binds a positive TokenSubunit amount and
+  direction to the completed transaction, result, authority sequence, at least
+  two regional evidence receipts, and an optional authority-commit Merkle
+  inclusion proof.
+
+Every recovery record has a SHA-256 content-addressed ID derived from a
+separate, explicitly ordered canonical body. Detached signatures cover that ID,
+the complete body, and public algorithm/key-version/time metadata. The package
+does not implement hashing, encryption, signing, key lookup, Blob access, or
+identity. Callers supply approved hash and signature-verification functions;
+`assertEconomyRegionalEvidenceChain()`,
+`assertEconomyRegionalEvidenceEquality()`,
+`assertEconomyMerkleInclusion()`, and
+`assertEconomyPortableCustomerReceiptEvidence()` run without a cloud SDK or
+authentication dependency.
+
+Recovery validators reject unknown fields. Plaintext records have no field for
+raw idempotency keys, provider/payment facts, callback bodies/signatures,
+storage URIs, payer/household/account identity, email, session data, or exact
+birth data. A portable receipt contains only opaque command/transaction
+references, proof hashes, amount/direction, safe activity, terms version, and
+`cashRedemptionAllowed: false`. The sealed payload's plaintext remains subject
+to the same approved privacy-minimized authority schema; encryption is not
+permission to retain unnecessary data.
+
+A consuming service may acknowledge a provider callback after identical
+acceptance evidence is durable in both approved regions, then process it
+asynchronously. A successful browser value command is not customer-acknowledged
+until the authoritative commit and both regional committed-result receipts
+exist. Cross-service writes are not a distributed ACID transaction: exact
+content IDs and idempotent create-only completion make orphan acceptances and
+committed-but-not-yet-acknowledged results recoverable without duplicating
+value.
+
+These contracts enable a scoped recoverability claim only after the consuming
+infrastructure proves dual durable writes, locked retention, independent keys,
+monitoring, and tested reconstruction. They do not by themselves establish
+zero RPO, WORM retention, HSM custody, administrator-proof storage, or
+availability.
+
 ## Source-lot policy and allocations
 
 `selectSourceLots()` selects spendable slices in credited-time/lot-ID order and

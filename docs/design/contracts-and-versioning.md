@@ -192,3 +192,30 @@ code-unit order; canonicalizers never silently repair malformed input.
 Existing `canonicalTransactionPayload()` bytes and golden vectors remain
 unchanged. New audit, authority, integrity-receipt, and anchor formats are
 separate additive canonical domains.
+
+## Recovery evidence V1
+
+Recovery evidence is an additive protocol around V3 authority commits. It does
+not modify a command, transaction, authority manifest, or persistence port.
+
+`EconomyRecoveryAcceptanceEnvelopeV1` and
+`EconomyRecoveryCommittedResultV1` use separate canonical body and complete
+record formats. Their IDs are the record prefix plus SHA-256 of the exact
+canonical body. The body includes a fixed `recordType`, so acceptance, result,
+regional, and portable identifiers cannot collide across domains.
+
+`EconomyRegionalEvidenceReceiptV1` and
+`EconomyPortableCustomerReceiptV1` likewise content-address their unsigned
+facts and add detached signatures. The signature payload includes the record
+ID, exact canonical body, algorithm, key ID and signing time under an explicit
+signature domain; it excludes the signature value.
+
+All recovery validators use exact allowed-key sets. Plaintext schemas do not
+accept raw idempotency/provider/payment data, actor/subject/payer identity,
+email, sessions, exact birth data, storage locations, or key material.
+Encrypted reconstruction bytes are bounded AES-256-GCM/base64url envelopes
+whose plaintext remains restricted to approved, privacy-minimized authority
+records.
+
+The complete construction and verification API is documented in
+[Recovery evidence contracts V1](./recovery-evidence-contracts-v1.md).

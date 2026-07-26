@@ -18,6 +18,12 @@ promotion is owned by the approved GitHub CD workflow.
     Merkle anchors, and deterministic journal-chain verification.
   - Added the additive `EconomyPersistencePortV3` atomic audit surface while
     retaining V1/V2 exports.
+  - Added provider-neutral, content-addressed recovery acceptance and committed
+    result envelopes, signed regional retention receipts, portable customer
+    receipts, and sealed reconstruction-payload contracts.
+  - Added cloud-independent verification for detached signatures, regional
+    byte equality and receipt chains, duplicate-last Merkle inclusion, and the
+    complete customer-receipt evidence graph.
 
 - **Changed**
   - Extended the persistence and integrity boundaries additively without
@@ -36,6 +42,10 @@ promotion is owned by the approved GitHub CD workflow.
   - Authority recovery requires a fresh verification receipt and dual-approval
     evidence; unconditional replacement, Upsert, Patch, and Delete have no V3
     write contract.
+  - Recovery and customer-receipt validators reject unknown raw provider,
+    payment, identity, storage, and key fields; portable receipts disclose only
+    the minimum transaction, amount, result, sequence, regional and inclusion
+    evidence needed for customer verification.
 
 ## [0.4.0] - 2026-07-26
 

@@ -19,5 +19,6 @@ export * from "./projection.js";
 export * from "./purchase-caps.js";
 export * from "./purchase-intents.js";
 export * from "./recurrence.js";
+export * from "./recovery.js";
 export * from "./spend-requests.js";
 export * from "./wallets.js";
