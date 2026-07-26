@@ -40,6 +40,10 @@ on:
         required: false
         type: string
         default: "1200"
+    secrets:
+      RELEASE_PREP_APP_PRIVATE_KEY:
+        description: "GitHub App private key used only to prepare release metadata."
+        required: true
     outputs:
       name:
         description: "npm package name"
@@ -67,8 +71,7 @@ permissions:
 
 jobs:
   prepare:
-    runs-on: ubuntu-latest
-    environment: production
+    runs-on: ${{ fromJSON(vars.CD_RUNNER_LABELS || '["self-hosted","Linux","X64"]') }}
     outputs:
       name: ${{ steps.release.outputs.name }}
       version: ${{ steps.release.outputs.version }}
