@@ -17,6 +17,11 @@ promotion is owned by the approved GitHub CD workflow.
   - (placeholder)
 
 - **Fixed**
+  - Installed a checksum-pinned GitHub CLI in both self-hosted release jobs so
+    release preparation and finalization do not depend on runner image state.
+  - Restricted incomplete-version recovery to versions that are unpublished on
+    both npm and GitHub, allowing an explicit bump after the current package
+    version has already been published.
   - Finalized workflow-bearing version tags and GitHub Releases with a
     current-repository GitHub App token that has explicit Contents and
     Workflows write permissions, while keeping npm publication on

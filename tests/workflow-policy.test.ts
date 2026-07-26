@@ -7,6 +7,10 @@ const readWorkflow = (name: string): string =>
 const ciWorkflow = readWorkflow("ci");
 const cdWorkflow = readWorkflow("cd");
 const releasePrepareWorkflow = readWorkflow("release-prepare");
+const installGithubCliScript = readFileSync(
+  new URL("../.github/scripts/install-github-cli.sh", import.meta.url),
+  "utf8",
+);
 const trustedProductionRunner =
   "runs-on: ${{ fromJSON(vars.CD_RUNNER_LABELS || '[\"self-hosted\",\"Linux\",\"X64\"]') }}";
 
@@ -54,6 +58,42 @@ describe("workflow trust and release policy", () => {
     ).toHaveLength(3);
     expect(cdWorkflow).not.toContain(
       "GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}",
+    );
+  });
+
+  it("installs a checksum-pinned GitHub CLI for every self-hosted release job", () => {
+    expect(cdWorkflow).toContain("name: Install pinned GitHub CLI");
+    expect(releasePrepareWorkflow).toContain(
+      "name: Install pinned GitHub CLI",
+    );
+    expect(cdWorkflow).toContain(
+      "run: .github/scripts/install-github-cli.sh",
+    );
+    expect(releasePrepareWorkflow).toContain(
+      "run: .github/scripts/install-github-cli.sh",
+    );
+    expect(installGithubCliScript).toContain(
+      'readonly GH_CLI_VERSION="2.96.0"',
+    );
+    expect(installGithubCliScript).toContain(
+      'readonly GH_CLI_SHA256="83d5c2ccad5498f58bf6368acb1ab32588cf43ab3a4b1c301bf36328b1c8bd60"',
+    );
+    expect(installGithubCliScript).toContain(
+      'actual_sha256="$(sha256sum "${GH_CLI_ARCHIVE}"',
+    );
+    expect(installGithubCliScript).toContain(
+      '[[ "${actual_sha256}" != "${GH_CLI_SHA256}" ]]',
+    );
+    expect(installGithubCliScript).toContain('"${RUNNER_TEMP:?');
+    expect(installGithubCliScript).toContain('"${GITHUB_PATH:?');
+  });
+
+  it("only reuses an incomplete release when neither public release is complete", () => {
+    expect(releasePrepareWorkflow).toContain(
+      '[ "${CURRENT_PUBLISHED}" != "true" ] && [ "${CURRENT_RELEASE_STATE}" != "published" ]',
+    );
+    expect(releasePrepareWorkflow).not.toContain(
+      '[ "${CURRENT_PUBLISHED}" != "true" ] || [ "${CURRENT_RELEASE_STATE}" != "published" ]',
     );
   });
 

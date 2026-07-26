@@ -325,7 +325,10 @@ workflow on configurable trusted self-hosted runners. Release LCOV and the
 CycloneDX SBOM remain retained even when an external coverage or npm provenance
 service is unavailable. Release tags and GitHub Releases use a current-repository
 GitHub App token with explicit Contents and Workflows write permissions; npm
-publication continues to use only the protected `NPM_TOKEN`.
+publication continues to use only the protected `NPM_TOKEN`. Both release jobs
+install a checksum-pinned GitHub CLI under `RUNNER_TEMP`. A requested version
+bump reuses the current version only when neither npm nor GitHub records it as a
+completed release; use `bump=none` for deliberate recovery of prepared metadata.
 
 ## Security
 

@@ -95,6 +95,10 @@ jobs:
           permission-contents: write
           permission-pull-requests: write
 
+      - name: Install pinned GitHub CLI
+        shell: bash
+        run: .github/scripts/install-github-cli.sh
+
       - name: Use Node.js 24
         uses: actions/setup-node@v4
         with:
@@ -235,7 +239,7 @@ jobs:
 
           if [ "${BUMP}" = "none" ]; then
             TARGET_VER="${CURRENT_VER}"
-          elif grep -Eq "^## (\[${CURRENT_VER}\]|${CURRENT_VER})( |$)" "${FILE}" && { [ "${CURRENT_PUBLISHED}" != "true" ] || [ "${CURRENT_RELEASE_STATE}" != "published" ]; }; then
+          elif grep -Eq "^## (\[${CURRENT_VER}\]|${CURRENT_VER})( |$)" "${FILE}" && { [ "${CURRENT_PUBLISHED}" != "true" ] && [ "${CURRENT_RELEASE_STATE}" != "published" ]; }; then
             echo "Reusing already-prepared incomplete release version ${CURRENT_VER}."
             TARGET_VER="${CURRENT_VER}"
           else
