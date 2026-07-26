@@ -38,6 +38,25 @@ describe("workflow trust and release policy", () => {
     );
   });
 
+  it("uses a least-privilege App token for workflow-bearing release tags", () => {
+    expect(cdWorkflow).toContain(
+      "name: Create release-finalization GitHub App token",
+    );
+    expect(cdWorkflow).toContain("permission-contents: write");
+    expect(cdWorkflow).toContain("permission-workflows: write");
+    expect(cdWorkflow).toContain(
+      "token: ${{ steps.release_finalization_app_token.outputs.token }}",
+    );
+    expect(
+      cdWorkflow.match(
+        /GH_TOKEN: \$\{\{ steps\.release_finalization_app_token\.outputs\.token \}\}/gu,
+      ),
+    ).toHaveLength(3);
+    expect(cdWorkflow).not.toContain(
+      "GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}",
+    );
+  });
+
   it("keeps production release workflows off pull-request triggers", () => {
     expect(cdWorkflow).toMatch(/on:\s*\n\s+workflow_dispatch:/u);
     expect(releasePrepareWorkflow).toMatch(/on:\s*\n\s+workflow_call:/u);

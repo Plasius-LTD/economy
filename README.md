@@ -323,7 +323,9 @@ projection rebuilds, idempotency, reversals, lot isolation, and allocation
 non-negativity. npm publication is performed only by the approved GitHub CD
 workflow on configurable trusted self-hosted runners. Release LCOV and the
 CycloneDX SBOM remain retained even when an external coverage or npm provenance
-service is unavailable.
+service is unavailable. Release tags and GitHub Releases use a current-repository
+GitHub App token with explicit Contents and Workflows write permissions; npm
+publication continues to use only the protected `NPM_TOKEN`.
 
 ## Security
 
