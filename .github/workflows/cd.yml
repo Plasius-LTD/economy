@@ -44,9 +44,19 @@ jobs:
     runs-on: ${{ fromJSON(vars.CD_RUNNER_LABELS || '["self-hosted","Linux","X64"]') }}
     environment: production
     steps:
+      - name: Create release-finalization GitHub App token
+        id: release_finalization_app_token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.RELEASE_PREP_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_PREP_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-workflows: write
+
       - name: Checkout prepared release commit
         uses: actions/checkout@v4
         with:
+          token: ${{ steps.release_finalization_app_token.outputs.token }}
           ref: ${{ needs.prepare_release.outputs.commit_sha }}
           fetch-depth: 0
 
@@ -172,7 +182,7 @@ jobs:
       - name: Ensure release tag points at prepared commit
         if: steps.release.outputs.should_finalize_release == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.release_finalization_app_token.outputs.token }}
           TAG: ${{ steps.release.outputs.release_tag }}
           PUBLISHED: ${{ needs.prepare_release.outputs.published }}
         run: |
@@ -216,7 +226,7 @@ jobs:
       - name: Create GitHub Release draft
         if: steps.release.outputs.should_finalize_release == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.release_finalization_app_token.outputs.token }}
           TAG: ${{ steps.release.outputs.release_tag }}
           PREID: ${{ inputs.preid }}
         run: |
@@ -276,7 +286,7 @@ jobs:
       - name: Publish GitHub Release
         if: steps.release.outputs.should_finalize_release == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.release_finalization_app_token.outputs.token }}
           TAG: ${{ steps.release.outputs.release_tag }}
           PREID: ${{ inputs.preid }}
         run: |
