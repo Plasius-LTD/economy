@@ -93,6 +93,7 @@ const transaction: LedgerTransactionV1 = {
   transactionId: "txn:purchase:1",
   activityType: "purchase",
   status: "settled",
+  // Legacy V1 example. V3 writes the domain-separated HMAC digest here.
   idempotencyKey: "intent:1:paid",
   effectiveAt: "2026-07-15T10:00:00.000Z",
   recordedAt: "2026-07-15T10:00:01.000Z",
@@ -120,12 +121,78 @@ assertBalancedTransaction(transaction);
 const payloadForApprovedHashAdapter = canonicalTransactionPayload(transaction);
 ```
 
-The package produces canonical bytes but deliberately leaves SHA-256/HSM
-signing to an approved infrastructure adapter. Metadata keys and posting IDs
-are ordered with locale-independent UTF-16 code-unit comparison. Their
+The package produces canonical bytes but deliberately leaves SHA-256 hashing
+and any signing to an approved infrastructure adapter. Metadata keys and
+posting IDs are ordered with locale-independent UTF-16 code-unit comparison. Their
 validated ASCII alphabet makes that ordering identical to PostgreSQL
 `COLLATE "C"`; adapters must hash the exact UTF-8 bytes returned by
 `canonicalTransactionPayload()`.
+
+## Audit receipts and integrity verification
+
+`AuditedEconomyCommandEnvelopeV1` is a standalone, fingerprint-only V3
+contract. It binds actor, subject, principal type, delegated
+relationship/version, sanitized capability/flag/assurance evidence, route,
+build, region, writer fence, correlation, causation, and payload. It never
+extends the legacy raw-key envelope.
+
+`EconomyHmacFingerprintV1` records an exact domain, key version, and
+`hmac-sha256:` digest. Raw idempotency keys, provider event/object IDs,
+callback bodies, and reconciliation material use distinct domains. Provider
+commands require a canonical `EconomyProviderEvidenceManifestV1`; callback
+signatures and payment data have no contract field.
+
+Encrypted operational provider handles remain site-owned.
+`EconomyEncryptedOperationalHandleBindingV1` binds only their purpose,
+provider, AES-256-GCM label, key version, ciphertext-content hash, and
+encryption-context hash. It contains no ciphertext, nonce, authentication tag,
+plaintext, or Key Vault URI.
+
+`EconomyAcceptedCommandReceiptV1` is safe to return after durable acceptance:
+it exposes only receipt, command, and correlation IDs plus the command-envelope
+hash and acceptance time. `EconomyCommandResultReceiptV1` is terminal and
+exclusive:
+
+- `completed` requires a transaction ID and its existing canonical hash and
+  forbids outcome codes;
+- `failed` requires one bounded safe failure code and forbids transaction
+  fields;
+- `no-op` requires one bounded safe no-op code and forbids transaction fields.
+
+Every terminal shape retains a result hash. Replay is a processing mode, not a
+command source: `assertExactAuditedEconomyCommandReplay()` requires identical
+canonical bytes and preserves the original source. A collision with different
+bytes is a security conflict.
+
+The audit canonicalizers use explicit fixed field order and omit absent optional
+fields. Runtime validators reject unknown fields rather than allowing raw
+evidence to be persisted accidentally. `canonicalTransactionPayload()` is
+unchanged. A V3 transaction stores the HMAC digest in its legacy canonical
+`idempotencyKey` field; the HTTP key is never stored.
+
+`EconomyAuthorityHeadV1` and hash-linked
+`EconomyAuthorityCommitManifestV1` cover every immutable record, conditional
+projection replacement, idempotency result, and outbox effect. Manifests
+support only `create` and `conditional-replace`; batches are limited to 80
+operations and 1.5 MiB. The manifest create and head replacement reserve
+two operations, leaving at most 78 canonical record references.
+`assertEconomyAuditGraph()` recomputes the complete command/evidence/receipt/
+transaction/manifest graph and expected head.
+`assertEconomyAuthorityRecoveryEvidence()` additionally recomputes the
+successful prior verification receipt bound by any reopening manifest.
+
+First-party commands use one atomic authority boundary. Provider workflows use
+one boundary to durably accept verified evidence before acknowledgement and a
+second boundary to record the externally reconciled completed, failed, or
+no-op result.
+
+`verifyJournalChainSegment()` accepts an approved canonical-payload hash
+function, recomputes every transaction hash, checks previous-hash links and
+duplicate transaction IDs, and proves the resulting head against an expected
+head. `EconomyIntegrityVerificationReceiptV1` binds authority, journal, and
+projection verification outcomes. `EconomyIntegrityAnchorManifestV1` defines
+canonical hourly Merkle evidence while signing, keys, and storage remain
+infrastructure responsibilities.
 
 ## Source-lot policy and allocations
 
@@ -306,6 +373,15 @@ journal rows directly. The V2 adapter is responsible for:
 - managed identity and least-privilege database access; and
 - immutable audit/integrity evidence outside this package.
 
+`EconomyPersistencePortV3` is additive and retains every V2 economic primitive.
+It removes V2's raw-key idempotency operations from its unit and replaces them
+with `EconomyAuditedIdempotencyScopeV1` and
+`EconomyAuditedIdempotencyResultV1`. It adds audited commands, evidence
+manifests, encrypted-handle bindings, receipts, authority commits/head CAS,
+integrity receipts, and anchor manifests. Its journal method accepts
+`AuditedChainedEconomicJournalTransactionV1`, whose legacy idempotency slot is
+type-narrowed to an HMAC digest. V1 and V2 remain exported unchanged.
+
 ## Development
 
 ```bash
@@ -332,6 +408,7 @@ completed release; use `bump=none` for deliberate recovery of prepared metadata.
 
 ## Security
 
-Do not include raw payment details, personal data, provider callback bodies, or
-secrets in contracts, metadata, tests, examples, or logs. Report vulnerabilities
-privately according to [SECURITY.md](./SECURITY.md).
+Do not include raw idempotency keys, provider identifiers, provider callback
+bodies or signatures, payment details, personal data, encrypted-handle
+ciphertext, or secrets in contracts, metadata, tests, examples, or logs.
+Report vulnerabilities privately according to [SECURITY.md](./SECURITY.md).
