@@ -6,6 +6,20 @@ promotion is owned by the approved GitHub CD workflow.
 ## Unreleased
 
 - **Added**
+  - (placeholder)
+
+- **Changed**
+  - (placeholder)
+
+- **Fixed**
+  - (placeholder)
+
+- **Security**
+  - (placeholder)
+
+## [0.4.0] - 2026-07-26
+
+- **Added**
   - Added purpose-bound `ModuleAllowanceV1` contracts with exact funding,
     reclaim, quote, hold, settle, release, receipt, and reconciliation
     invariants for Guardian-funded Junior Coder module entitlements.
@@ -123,3 +137,4 @@ promotion is owned by the approved GitHub CD workflow.
 [0.3.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.3.0
 [0.3.1]: https://github.com/Plasius-LTD/economy/releases/tag/v0.3.1
 [0.3.2]: https://github.com/Plasius-LTD/economy/releases/tag/v0.3.2
+[0.4.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.4.0
