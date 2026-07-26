@@ -19,6 +19,18 @@ tag creation, and GitHub Release finalization; npm publication remains
 authenticated solely by the protected `NPM_TOKEN`. Validation remains
 unchanged.
 
+Both self-hosted release jobs install GitHub CLI 2.96.0 into `RUNNER_TEMP` from
+the official Linux AMD64 archive and verify its published SHA-256 checksum
+before adding it to the job path. Release correctness therefore does not depend
+on mutable, system-wide runner tooling.
+
+When a bump is requested, release preparation reuses an existing changelog
+version only if that version is incomplete on both npm and GitHub. An npm
+publication or a published GitHub Release makes the current version complete
+for bump selection, so the requested bump is applied to the highest local,
+registry, or tag version. `bump=none` remains the explicit recovery path for
+already-prepared metadata.
+
 The release retains LCOV for 30 days and its CycloneDX SBOM for 90 days. npm
 currently requires a cloud-hosted runner for provenance, so publication on a
 self-hosted runner uses the protected `NPM_TOKEN` without making an unsupported
@@ -33,6 +45,10 @@ attestation through the existing attestation step.
   version metadata, tags, and GitHub Releases. Its publication-job token is
   restricted to the current repository and revoked when the job finishes,
   while npm publication remains protected by the production environment.
+- GitHub CLI upgrades require an explicit version and checksum review in the
+  repository rather than an untracked runner-image change.
+- Version recovery no longer turns a requested bump into an impossible
+  duplicate publication when the current npm version is already live.
 - Deterministic validation, retained evidence and GitHub SBOM attestation remain
   release gates; npm provenance can be re-enabled when self-hosted support is
   officially available.

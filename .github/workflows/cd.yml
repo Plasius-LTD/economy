@@ -60,6 +60,10 @@ jobs:
           ref: ${{ needs.prepare_release.outputs.commit_sha }}
           fetch-depth: 0
 
+      - name: Install pinned GitHub CLI
+        shell: bash
+        run: .github/scripts/install-github-cli.sh
+
       - name: Use Node.js 24
         uses: actions/setup-node@v4
         with:
