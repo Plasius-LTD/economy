@@ -22,6 +22,8 @@ promotion is owned by the approved GitHub CD workflow.
     provenance on self-hosted publication.
   - Kept reusable release preparation outside the publication environment so
     inherited organisation GitHub App credentials remain available.
+  - Declared and mapped the release-prep GitHub App key explicitly at the
+    reusable-workflow boundary so missing credentials fail during validation.
 
 - **Security**
   - Module settlement now requires a pending entitlement identifier, while

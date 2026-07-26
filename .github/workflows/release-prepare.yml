@@ -40,6 +40,10 @@ on:
         required: false
         type: string
         default: "1200"
+    secrets:
+      RELEASE_PREP_APP_PRIVATE_KEY:
+        description: "GitHub App private key used only to prepare release metadata."
+        required: true
     outputs:
       name:
         description: "npm package name"

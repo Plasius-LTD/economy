@@ -27,7 +27,12 @@ describe("workflow trust and release policy", () => {
   it("keeps inherited release-preparation secrets outside environment shadowing", () => {
     expect(cdWorkflow).toContain("environment: production");
     expect(releasePrepareWorkflow).not.toContain("environment: production");
-    expect(cdWorkflow).toContain("secrets: inherit");
+    expect(cdWorkflow).toContain(
+      "RELEASE_PREP_APP_PRIVATE_KEY: ${{ secrets.RELEASE_PREP_APP_PRIVATE_KEY }}",
+    );
+    expect(releasePrepareWorkflow).toMatch(
+      /secrets:\s*\n\s+RELEASE_PREP_APP_PRIVATE_KEY:[\s\S]*?\n\s+required: true\s*\n\s+outputs:/u,
+    );
     expect(releasePrepareWorkflow).toContain(
       "private-key: ${{ secrets.RELEASE_PREP_APP_PRIVATE_KEY }}",
     );
