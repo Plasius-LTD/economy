@@ -68,7 +68,6 @@ permissions:
 jobs:
   prepare:
     runs-on: ${{ fromJSON(vars.CD_RUNNER_LABELS || '["self-hosted","Linux","X64"]') }}
-    environment: production
     outputs:
       name: ${{ steps.release.outputs.name }}
       version: ${{ steps.release.outputs.version }}

@@ -24,6 +24,15 @@ describe("workflow trust and release policy", () => {
     expect(releasePrepareWorkflow).not.toContain("runs-on: ubuntu-latest");
   });
 
+  it("keeps inherited release-preparation secrets outside environment shadowing", () => {
+    expect(cdWorkflow).toContain("environment: production");
+    expect(releasePrepareWorkflow).not.toContain("environment: production");
+    expect(cdWorkflow).toContain("secrets: inherit");
+    expect(releasePrepareWorkflow).toContain(
+      "private-key: ${{ secrets.RELEASE_PREP_APP_PRIVATE_KEY }}",
+    );
+  });
+
   it("keeps production release workflows off pull-request triggers", () => {
     expect(cdWorkflow).toMatch(/on:\s*\n\s+workflow_dispatch:/u);
     expect(releasePrepareWorkflow).toMatch(/on:\s*\n\s+workflow_call:/u);
