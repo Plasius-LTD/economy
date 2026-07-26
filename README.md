@@ -329,6 +329,8 @@ publication continues to use only the protected `NPM_TOKEN`. Both release jobs
 install a checksum-pinned GitHub CLI under `RUNNER_TEMP`. A requested version
 bump reuses the current version only when neither npm nor GitHub records it as a
 completed release; use `bump=none` for deliberate recovery of prepared metadata.
+Publication checks out the verified current release-branch HEAD so that recovery
+always includes the reviewed workflow tooling.
 
 ## Security
 
