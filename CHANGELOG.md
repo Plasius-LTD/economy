@@ -6,6 +6,20 @@ promotion is owned by the approved GitHub CD workflow.
 ## Unreleased
 
 - **Added**
+  - (placeholder)
+
+- **Changed**
+  - (placeholder)
+
+- **Fixed**
+  - (placeholder)
+
+- **Security**
+  - (placeholder)
+
+## [0.5.0] - 2026-07-28
+
+- **Added**
   - Added fingerprint-only audited command envelopes binding actor, subject,
     principal/relationship authorization evidence, route, build, region,
     writer fence, correlation, causation, and provider manifests.
@@ -170,3 +184,4 @@ promotion is owned by the approved GitHub CD workflow.
 [0.3.1]: https://github.com/Plasius-LTD/economy/releases/tag/v0.3.1
 [0.3.2]: https://github.com/Plasius-LTD/economy/releases/tag/v0.3.2
 [0.4.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.4.0
+[0.5.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.5.0
