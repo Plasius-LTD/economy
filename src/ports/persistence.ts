@@ -1,5 +1,22 @@
 import type { TokenSubunitString } from "../amount.js";
 import type { GameplayAllocationV1 } from "../allocations.js";
+import type {
+  AuditedEconomyCommandEnvelopeV1,
+  EconomyAuditedIdempotencyResultV1,
+  EconomyAuditedIdempotencyScopeV1,
+  EconomyAcceptedCommandReceiptV1,
+  EconomyCommandResultReceiptV1,
+  EconomyEncryptedOperationalHandleBindingV1,
+  EconomyProviderEvidenceHashV1,
+  EconomyProviderEvidenceManifestV1,
+  EconomyHmacSha256DigestV1,
+} from "../audit.js";
+import type {
+  EconomyAuthorityCommitManifestV1,
+  EconomyAuthorityHeadV1,
+  EconomyIntegrityAnchorManifestV1,
+  EconomyIntegrityVerificationReceiptV1,
+} from "../authority.js";
 import {
   ECONOMY_CONTRACT_VERSION,
   assertEconomyIdentifier,
@@ -386,6 +403,122 @@ export interface EconomyPersistencePortV2 {
     readonly WalletBalanceProjectionV1[]
   >;
 }
+
+/**
+ * V3 journal transaction whose legacy canonical `idempotencyKey` slot carries
+ * the HMAC digest, never the raw HTTP Idempotency-Key. The wire field remains
+ * unchanged so published transaction canonical bytes stay compatible.
+ */
+export type AuditedChainedEconomicJournalTransactionV1 = Omit<
+  ChainedEconomicJournalTransactionV1,
+  "idempotencyKey"
+> & {
+  readonly idempotencyKey: EconomyHmacSha256DigestV1;
+};
+
+/**
+ * Additive audit-capable mutation surface.
+ *
+ * First-party commands append acceptance, economic result, projections,
+ * idempotency result, outbox, authority manifest, and authority-head CAS in one
+ * serializable unit. Provider workflows use one unit for verified durable
+ * acceptance and a second unit for the reconciled economic result.
+ */
+export type EconomyUnitOfWorkV3 = Omit<
+  EconomyUnitOfWorkV2,
+  | "appendCommandEnvelope"
+  | "findIdempotencyResult"
+  | "saveIdempotencyResult"
+  | "appendTransaction"
+> & {
+  findAuditedIdempotencyResult(
+    scope: EconomyAuditedIdempotencyScopeV1,
+  ): Promise<EconomyAuditedIdempotencyResultV1 | null>;
+  lockAuthorityHead(authorityId: string): Promise<EconomyAuthorityHeadV1>;
+  appendCommandEnvelope(
+    envelope: AuditedEconomyCommandEnvelopeV1,
+  ): Promise<void>;
+  appendProviderEvidenceManifest(
+    manifest: EconomyProviderEvidenceManifestV1,
+  ): Promise<void>;
+  appendProviderEvidence(
+    evidence: EconomyProviderEvidenceHashV1,
+  ): Promise<void>;
+  appendEncryptedOperationalHandleBinding(
+    binding: EconomyEncryptedOperationalHandleBindingV1,
+  ): Promise<void>;
+  appendAcceptedCommandReceipt(
+    receipt: EconomyAcceptedCommandReceiptV1,
+  ): Promise<void>;
+  appendCommandResultReceipt(
+    receipt: EconomyCommandResultReceiptV1,
+  ): Promise<void>;
+  appendTransaction(
+    transaction: AuditedChainedEconomicJournalTransactionV1,
+  ): Promise<void>;
+  saveAuditedIdempotencyResult(
+    scope: EconomyAuditedIdempotencyScopeV1,
+    result: EconomyAuditedIdempotencyResultV1,
+  ): Promise<void>;
+  appendAuthorityCommitManifest(
+    manifest: EconomyAuthorityCommitManifestV1,
+  ): Promise<void>;
+  advanceAuthorityHead(
+    expected: EconomyAuthorityHeadV1,
+    next: EconomyAuthorityHeadV1,
+  ): Promise<void>;
+  appendIntegrityVerificationReceipt(
+    receipt: EconomyIntegrityVerificationReceiptV1,
+  ): Promise<void>;
+  appendIntegrityAnchorManifest(
+    manifest: EconomyIntegrityAnchorManifestV1,
+  ): Promise<void>;
+};
+
+/**
+ * V3 preserves every V2 economic primitive while making the audit records
+ * mandatory capabilities of an authoritative adapter. V1 and V2 remain
+ * exported unchanged for existing consumers.
+ */
+export type EconomyPersistencePortV3 = Omit<
+  EconomyPersistencePortV2,
+  "runSerializable" | "getCommandEnvelope" | "getTransaction"
+> & {
+  runSerializable<T>(
+    operation: (unitOfWork: EconomyUnitOfWorkV3) => Promise<T>,
+  ): Promise<T>;
+  getCommandEnvelope(
+    commandId: string,
+  ): Promise<AuditedEconomyCommandEnvelopeV1 | null>;
+  getTransaction(
+    transactionId: TransactionId,
+  ): Promise<AuditedChainedEconomicJournalTransactionV1 | null>;
+  getAcceptedCommandReceipt(
+    commandId: string,
+  ): Promise<EconomyAcceptedCommandReceiptV1 | null>;
+  getCommandResultReceipt(
+    commandId: string,
+  ): Promise<EconomyCommandResultReceiptV1 | null>;
+  listProviderEvidence(
+    commandId: string,
+  ): Promise<readonly EconomyProviderEvidenceHashV1[]>;
+  getProviderEvidenceManifest(
+    commandId: string,
+  ): Promise<EconomyProviderEvidenceManifestV1 | null>;
+  listEncryptedOperationalHandleBindings(
+    commandId: string,
+  ): Promise<readonly EconomyEncryptedOperationalHandleBindingV1[]>;
+  getAuthorityHead(authorityId: string): Promise<EconomyAuthorityHeadV1 | null>;
+  getAuthorityCommitManifest(
+    commitId: string,
+  ): Promise<EconomyAuthorityCommitManifestV1 | null>;
+  getIntegrityVerificationReceipt(
+    verificationId: string,
+  ): Promise<EconomyIntegrityVerificationReceiptV1 | null>;
+  getIntegrityAnchorManifest(
+    anchorId: string,
+  ): Promise<EconomyIntegrityAnchorManifestV1 | null>;
+};
 
 export interface EconomyClockPort {
   now(): IsoTimestamp;

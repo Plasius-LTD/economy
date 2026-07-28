@@ -6,10 +6,28 @@ promotion is owned by the approved GitHub CD workflow.
 ## Unreleased
 
 - **Added**
-  - (placeholder)
+  - Added fingerprint-only audited command envelopes binding actor, subject,
+    principal/relationship authorization evidence, route, build, region,
+    writer fence, correlation, causation, and provider manifests.
+  - Added domain-separated HMAC provider evidence, site-owned
+    encrypted-handle bindings, accepted/completed/failed/no-op receipts,
+    raw-key-free V3 idempotency, and exact replay validation.
+  - Added a hash-linked authority head and commit manifests, create/conditional
+    replace record references, the open/acquisition-closed/closed/rebuilding
+    state machine, cross-record graph validation, integrity receipts, canonical
+    Merkle anchors, and deterministic journal-chain verification.
+  - Added the additive `EconomyPersistencePortV3` atomic audit surface while
+    retaining V1/V2 exports.
+  - Added provider-neutral, content-addressed recovery acceptance and committed
+    result envelopes, signed regional retention receipts, portable customer
+    receipts, and sealed reconstruction-payload contracts.
+  - Added cloud-independent verification for detached signatures, regional
+    byte equality and receipt chains, duplicate-last Merkle inclusion, and the
+    complete customer-receipt evidence graph.
 
 - **Changed**
-  - (placeholder)
+  - Extended the persistence and integrity boundaries additively without
+    changing published V1/V2 transaction canonical bytes.
 
 - **Fixed**
   - Selected the verified current release-branch HEAD for publication so a
@@ -17,7 +35,19 @@ promotion is owned by the approved GitHub CD workflow.
     metadata commit.
 
 - **Security**
-  - (placeholder)
+  - V3 audit validators reject unknown/raw idempotency and provider fields,
+    preserve original command source on replay, enforce source/command/evidence
+    compatibility, and require versioned domain-separated HMAC fingerprints.
+  - V3 journal writes type-narrow the unchanged legacy idempotency field to the
+    HMAC digest, preserving published canonical transaction bytes without
+    storing the raw HTTP key.
+  - Authority recovery requires a fresh verification receipt and dual-approval
+    evidence; unconditional replacement, Upsert, Patch, and Delete have no V3
+    write contract.
+  - Recovery and customer-receipt validators reject unknown raw provider,
+    payment, identity, storage, and key fields; portable receipts disclose only
+    the minimum transaction, amount, result, sequence, regional and inclusion
+    evidence needed for customer verification.
 
 ## [0.4.0] - 2026-07-26
 

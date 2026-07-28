@@ -1,6 +1,9 @@
 export * from "./acquisition.js";
 export * from "./allocations.js";
 export * from "./amount.js";
+export * from "./audit.js";
+export * from "./audit-graph.js";
+export * from "./authority.js";
 export * from "./contracts.js";
 export * from "./early-backers.js";
 export * from "./errors.js";
@@ -16,5 +19,6 @@ export * from "./projection.js";
 export * from "./purchase-caps.js";
 export * from "./purchase-intents.js";
 export * from "./recurrence.js";
+export * from "./recovery.js";
 export * from "./spend-requests.js";
 export * from "./wallets.js";
