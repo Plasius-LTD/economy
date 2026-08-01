@@ -6,6 +6,20 @@ promotion is owned by the approved GitHub CD workflow.
 ## Unreleased
 
 - **Added**
+  - (placeholder)
+
+- **Changed**
+  - (placeholder)
+
+- **Fixed**
+  - (placeholder)
+
+- **Security**
+  - (placeholder)
+
+## [0.7.0] - 2026-08-01
+
+- **Added**
   - Added server-prepared operator adjustment preview, pending proposal,
     distinct approval/rejection, execution and dual-approved reversal
     contracts with exact canonical payloads and stable failure codes.
@@ -209,3 +223,4 @@ promotion is owned by the approved GitHub CD workflow.
 [0.4.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.4.0
 [0.5.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.5.0
 [0.6.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.6.0
+[0.7.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.7.0
