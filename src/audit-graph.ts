@@ -390,6 +390,16 @@ function assertReceiptGraph(
     resultHash,
   );
 
+  if (envelope.commandType === "initialize-wallet") {
+    economyAssert(
+      result.outcome === "no-op" &&
+        (result.noOpCode === "WALLET_INITIALIZED" ||
+          result.noOpCode === "WALLET_ALREADY_INITIALIZED"),
+      "INVALID_CONTRACT",
+      "Wallet initialization must terminate without an economic transaction",
+    );
+  }
+
   if (result.outcome !== "completed") {
     economyAssert(
       graph.transaction === undefined,

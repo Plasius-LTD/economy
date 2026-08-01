@@ -67,6 +67,20 @@ in all results. Aggregate columns are display totals, not a fungibility claim;
 in particular, sub-Token progress is not promoted between a household treasury
 and a same-user-only personal wallet.
 
+### Personal-wallet initialization
+
+`PersonalWalletInitializationStateV1` is a deterministic exact-zero baseline,
+not editable profile data and not an economic transaction. Its command and
+outbox canonicalizers accept exact allowed keys only. A caller-supplied SHA-256
+adapter derives stable document identities in a fixed initialization domain;
+the package does not implement cryptography or persistence.
+
+The baseline has exactly one personal component, zero available/reserved/held
+and progress, zero lifetime counters and no activity entries. The consuming
+authority commits it with fingerprint-only command/receipt facts,
+idempotency, a manifest and conditional head replacement. A partial stored set
+fails integrity validation rather than being silently completed.
+
 ## Trust boundary
 
 Contracts are data and validation primitives. A caller must still derive
@@ -95,6 +109,12 @@ commit/head, integrity receipt, and anchor operations.
 `economy.idempotency-key.v1`, a key version, and an
 `hmac-sha256:<lowercase-hex>` digest. Runtime validators reject unknown fields,
 including a caller that bypasses TypeScript and supplies `idempotencyKey`.
+
+`EconomyAuditedCommandTypeV1` additively includes `initialize-wallet` while
+`EconomyCommandType` remains the unchanged V1/V2 union. Initialization is a
+browser/direct-account command with actor equal to subject and no relationship
+context. Its terminal receipt is a no-op in the economic sense: it proves the
+metadata/projection boundary completed without a journal transaction.
 
 The envelope binds:
 

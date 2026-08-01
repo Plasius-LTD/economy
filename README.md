@@ -399,6 +399,21 @@ across wallets, even if the sum reaches 1,000 TokenSubunits, because source and
 transfer restrictions may differ. Authorization must happen before the server
 constructs a portfolio scope.
 
+`createPersonalWalletInitializationState()` supplies the exact baseline needed
+before a self account can read a portfolio: deterministic document IDs, one
+account-owned personal `WalletV1`, a single-component scope, exact-zero balance
+and lifetime projections, no activity entries, and a privacy-minimized
+`wallet.initialized.v1` outbox intent. The caller provides SHA-256 and must
+commit the state with audited receipts, idempotency, the authority manifest and
+conditional head advance in one ACID boundary.
+
+`initialize-wallet` exists only in `EconomyAuditedCommandTypeV1`; legacy V1/V2
+command unions remain unchanged. It accepts a direct self-account browser
+principal only and terminates with `WALLET_INITIALIZED` or
+`WALLET_ALREADY_INITIALIZED` as a no-economic result. It never creates a
+double-entry transaction or Token activity row and does not authorize value or
+provider writes.
+
 Activity reads use bounded opaque cursor pagination in stable descending
 `(occurredAt, activityId)` order. Each row retains the component `walletId`
 whose signed display amount it represents. Cursor contents and signatures are

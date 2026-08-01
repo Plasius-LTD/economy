@@ -169,6 +169,85 @@ function firstPartyAuditGraph(): EconomyAuditGraphV1 {
   };
 }
 
+function walletInitializationAuditGraph(
+  noOpCode = "WALLET_INITIALIZED",
+): EconomyAuditGraphV1 {
+  const base = firstPartyAuditGraph();
+  const {
+    relationshipId: _relationshipId,
+    authorizationVersion: _authorizationVersion,
+    ...baseCommand
+  } = base.commandEnvelope;
+  const command: AuditedEconomyCommandEnvelopeV1 = {
+    ...baseCommand,
+    commandId: "command:wallet-initialization:1",
+    commandType: "initialize-wallet",
+    routeId: "api:economy:wallet-initialization",
+    correlationId: "correlation:wallet-initialization:1",
+  };
+  const commandHash = hash(
+    canonicalAuditedEconomyCommandEnvelopePayload(command),
+  );
+  const accepted = acceptedReceipt(command, {
+    receiptId: "receipt:accepted:wallet-initialization:1",
+  });
+  const acceptedHash = hash(
+    canonicalEconomyAcceptedCommandReceiptPayload(accepted),
+  );
+  const result: EconomyCommandResultReceiptV1 = {
+    schemaVersion: "1",
+    receiptId: "receipt:result:wallet-initialization:1",
+    commandId: command.commandId,
+    correlationId: command.correlationId,
+    acceptedReceiptId: accepted.receiptId,
+    commandEnvelopeHash: commandHash,
+    outcome: "no-op",
+    resultHash: HASH_B,
+    noOpCode,
+    recordedAt: command.acceptedAt,
+  };
+  const resultHash = hash(
+    canonicalEconomyCommandResultReceiptPayload(result),
+  );
+  const manifest = authorityManifest(
+    [
+      createdReference("command-envelope", command.commandId, commandHash),
+      createdReference("accepted-receipt", accepted.receiptId, acceptedHash),
+      createdReference("result-receipt", result.receiptId, resultHash),
+      createdReference("wallet", "wallet-descriptor:personal:1", HASH_A),
+      createdReference("balance-projection", "wallet-balance:personal:1", HASH_B),
+      createdReference("lifetime-projection", "wallet-lifetime:personal:1", HASH_C),
+      createdReference("idempotency-result", "idempotency:wallet:1", HASH_A),
+      createdReference("outbox-event", "outbox:wallet-initialized:1", HASH_B),
+    ],
+    {
+      commitId: "authority-commit:wallet-initialization:1",
+      commitKind: "first-party-command",
+      commandId: command.commandId,
+      correlationId: command.correlationId,
+    },
+  );
+  const manifestHash = hash(
+    canonicalEconomyAuthorityCommitManifestPayload(manifest),
+  );
+  return {
+    schemaVersion: "1",
+    commandEnvelope: command,
+    commandEnvelopeHash: commandHash,
+    providerEvidence: [],
+    operationalHandleBindings: [],
+    acceptedReceipt: accepted,
+    resultReceipt: result,
+    startAuthorityHead: base.startAuthorityHead,
+    commits: [{ schemaVersion: "1", manifest, canonicalHash: manifestHash }],
+    expectedAuthorityHead: advanceEconomyAuthorityHead(
+      base.startAuthorityHead,
+      manifest,
+      manifestHash,
+    ),
+  };
+}
+
 describe("cross-record economy audit graph", () => {
   it("validates a provider acceptance and reconciled result across two ACID boundaries", () => {
     expect(() =>
@@ -200,6 +279,18 @@ describe("cross-record economy audit graph", () => {
             activityType: "adjustment",
           },
         },
+        hash,
+      ),
+    ).toThrowError(expect.objectContaining({ code: "INVALID_CONTRACT" }));
+  });
+
+  it("binds wallet initialization records without inventing an economic transaction", () => {
+    expect(() =>
+      assertEconomyAuditGraph(walletInitializationAuditGraph(), hash),
+    ).not.toThrow();
+    expect(() =>
+      assertEconomyAuditGraph(
+        walletInitializationAuditGraph("UNRELATED_NO_OP"),
         hash,
       ),
     ).toThrowError(expect.objectContaining({ code: "INVALID_CONTRACT" }));

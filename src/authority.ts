@@ -73,6 +73,7 @@ export type EconomyAuthorityRecordKindV1 =
   | "source-lot"
   | "source-lot-movement"
   | "gameplay-allocation"
+  | "wallet"
   | "balance-projection"
   | "lifetime-projection"
   | "idempotency-result"
@@ -229,6 +230,7 @@ const RECORD_KINDS = new Set<EconomyAuthorityRecordKindV1>([
   "source-lot",
   "source-lot-movement",
   "gameplay-allocation",
+  "wallet",
   "balance-projection",
   "lifetime-projection",
   "idempotency-result",
