@@ -6,6 +6,20 @@ promotion is owned by the approved GitHub CD workflow.
 ## Unreleased
 
 - **Added**
+  - (placeholder)
+
+- **Changed**
+  - (placeholder)
+
+- **Fixed**
+  - (placeholder)
+
+- **Security**
+  - (placeholder)
+
+## [0.6.0] - 2026-08-01
+
+- **Added**
   - Added an audited `initialize-wallet` command and deterministic personal
     wallet, portfolio, exact-zero projection and outbox planning contracts.
 
@@ -189,3 +203,4 @@ promotion is owned by the approved GitHub CD workflow.
 [0.3.2]: https://github.com/Plasius-LTD/economy/releases/tag/v0.3.2
 [0.4.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.4.0
 [0.5.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.5.0
+[0.6.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.6.0
