@@ -186,6 +186,29 @@ one boundary to durably accept verified evidence before acknowledgement and a
 second boundary to record the externally reconciled completed, failed, or
 no-op result.
 
+## Dual-approved operator adjustments
+
+`OperatorAdjustmentPreviewV1` is the immutable value plan prepared by a
+trusted site adapter. It binds the target account and component to the
+server-resolved wallet, target and offset ledger accounts, deterministic
+source lot, positive TokenSubunit magnitude, bounded reason, hashed ticket
+reference, transfer/refund policy, and expiry. Browser and MCP callers may
+request an account and component, but their wallet or ledger identifiers are
+never authority.
+
+`OperatorAdjustmentProposalV1` records the first operator's pending proposal.
+`OperatorAdjustmentDecisionV1` requires another stable account and binds the
+exact preview and proposal hashes. `OperatorAdjustmentExecutionV1` links an
+approved plan to its source lot, immutable journal transaction and terminal
+result receipt. A correction is a new `reverse-credit` proposal tied to the
+original lot and transaction; the package exposes no set-balance or delete
+operation.
+
+The package validates and canonicalizes these records but deliberately does
+not resolve platform owners, perform MFA step-up, evaluate capabilities or
+flags, hash ticket references, persist proposals, or execute transactions.
+Those controls stay in the consuming authority adapter.
+
 `verifyJournalChainSegment()` accepts an approved canonical-payload hash
 function, recomputes every transaction hash, checks previous-hash links and
 duplicate transaction IDs, and proves the resulting head against an expected
