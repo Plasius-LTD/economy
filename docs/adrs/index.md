@@ -7,3 +7,4 @@
 - [ADR-0005: Fingerprint-only audit graphs and atomic V3 authority commits](./adr-0005-economy-audit-receipts-and-atomic-v3-persistence.md)
 - [ADR-0006: Dual-region recovery evidence and portable customer receipts](./adr-0006-dual-region-recovery-evidence-and-portable-receipts.md)
 - [ADR-0007: Audited non-economic personal-wallet initialization](./adr-0007-audited-non-economic-wallet-initialization.md)
+- [ADR-0008: Preview-bound dual-approved operator Token adjustments](./adr-0008-preview-bound-dual-approved-operator-adjustments.md)

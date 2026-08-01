@@ -12,7 +12,11 @@ export type EconomyErrorCode =
   | "SOURCE_LOT_RESTRICTED"
   | "REVERSAL_ALREADY_EXISTS"
   | "NEGATIVE_PROJECTION"
-  | "INVALID_TIME_WINDOW";
+  | "INVALID_TIME_WINDOW"
+  | "ADJUSTMENT_SELF_APPROVAL"
+  | "ADJUSTMENT_EXPIRED"
+  | "ADJUSTMENT_PREVIEW_MISMATCH"
+  | "ADJUSTMENT_NOT_APPROVED";
 
 export interface EconomyErrorEnvelopeV1 {
   readonly schemaVersion: "1";

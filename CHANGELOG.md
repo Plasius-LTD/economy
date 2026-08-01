@@ -6,7 +6,9 @@ promotion is owned by the approved GitHub CD workflow.
 ## Unreleased
 
 - **Added**
-  - (placeholder)
+  - Added server-prepared operator adjustment preview, pending proposal,
+    distinct approval/rejection, execution and dual-approved reversal
+    contracts with exact canonical payloads and stable failure codes.
 
 - **Changed**
   - (placeholder)
@@ -15,7 +17,10 @@ promotion is owned by the approved GitHub CD workflow.
   - (placeholder)
 
 - **Security**
-  - (placeholder)
+  - Operator adjustment plans bind server-resolved wallet, ledger account and
+    source-lot identities; positive value cannot execute without an unexpired
+    preview and a distinct approving account, and correction has no delete or
+    mutable-balance contract.
 
 ## [0.6.0] - 2026-08-01
 
