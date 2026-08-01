@@ -22,3 +22,4 @@ export * from "./recurrence.js";
 export * from "./recovery.js";
 export * from "./spend-requests.js";
 export * from "./wallets.js";
+export * from "./wallet-initialization.js";

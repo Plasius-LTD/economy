@@ -6,16 +6,20 @@ promotion is owned by the approved GitHub CD workflow.
 ## Unreleased
 
 - **Added**
-  - (placeholder)
+  - Added an audited `initialize-wallet` command and deterministic personal
+    wallet, portfolio, exact-zero projection and outbox planning contracts.
 
 - **Changed**
-  - (placeholder)
+  - Extended only the V3 audited command union and authority record kinds;
+    legacy V1/V2 command types and transaction canonical bytes are unchanged.
 
 - **Fixed**
   - (placeholder)
 
 - **Security**
-  - (placeholder)
+  - Initialization is restricted to direct self-account browser principals,
+    creates no economic transaction or activity row, rejects unknown/raw
+    fields, and remains independently gated from Token value writes.
 
 ## [0.5.0] - 2026-07-28
 

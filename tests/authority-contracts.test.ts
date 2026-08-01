@@ -119,6 +119,12 @@ describe("authority commit and integrity contracts", () => {
         writeKind: "delete",
       } as never),
     ).toThrowError(expect.objectContaining({ code: "INVALID_CONTRACT" }));
+
+    expect(() =>
+      assertEconomyAuthorityRecordReference(
+        createdReference("wallet", "wallet:personal:1", HASH_A),
+      ),
+    ).not.toThrow();
   });
 
   it("sorts references canonically and rejects duplicate or unsorted input", () => {

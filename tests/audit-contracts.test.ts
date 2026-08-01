@@ -150,6 +150,45 @@ describe("privacy-minimized economy audit contracts", () => {
     ).toThrowError(expect.objectContaining({ code: "INVALID_CONTRACT" }));
   });
 
+  it("accepts initialization only as a direct self-account browser command", () => {
+    const providerCommand = command();
+    const {
+      providerEvidenceManifestHash: _providerEvidenceManifestHash,
+      causation: _causation,
+      relationshipId: _relationshipId,
+      authorizationVersion: _authorizationVersion,
+      ...common
+    } = providerCommand;
+    const initialization: AuditedEconomyCommandEnvelopeV1 = {
+      ...common,
+      commandId: "command:wallet-initialization:1",
+      commandType: "initialize-wallet",
+      commandSource: "browser",
+      actorAccountId: "account:adult",
+      subjectAccountId: "account:adult",
+      principalType: "account",
+      routeId: "api:economy:wallet-initialization",
+    };
+
+    expect(() =>
+      assertAuditedEconomyCommandEnvelope(initialization),
+    ).not.toThrow();
+    for (const invalid of [
+      { ...initialization, principalType: "delegated-child" as const },
+      { ...initialization, actorAccountId: "account:guardian" },
+      {
+        ...initialization,
+        relationshipId: "relationship:household",
+        authorizationVersion: 1,
+      },
+      { ...initialization, commandSource: "system" as const },
+    ]) {
+      expect(() =>
+        assertAuditedEconomyCommandEnvelope(invalid),
+      ).toThrowError(expect.objectContaining({ code: "INVALID_CONTRACT" }));
+    }
+  });
+
   it("rejects raw Idempotency-Key fields even if JavaScript bypasses typing", () => {
     const audited = {
       ...command(),

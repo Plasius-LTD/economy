@@ -71,6 +71,23 @@ use one serializable boundary:
 
 No economic document is created for failed or no-op results.
 
+### Wallet initialization boundary
+
+Personal-wallet initialization uses the same first-party authority commit but
+is deliberately non-economic. After validating a direct self-account audited
+command, the adapter creates the deterministic wallet descriptor, portfolio
+access scope, exact-zero balance/lifetime projections and outbox intent. The
+same batch creates accepted/result receipts and idempotency evidence, appends
+the manifest and conditionally advances the head.
+
+The result uses `WALLET_INITIALIZED` or `WALLET_ALREADY_INITIALIZED` with
+outcome `no-op`, meaning no Token journal effect was required. A completed
+transaction receipt, activity row or source lot is invalid. If any but not all
+required projections already exist, processing fails closed as integrity
+drift. Head contention causes a complete fresh-state replan; an unknown commit
+outcome is resolved from the deterministic idempotency receipt and its
+manifest binding.
+
 ## Provider acceptance boundary
 
 Shopify, ayeT, and BitLabs verify their signature over the required raw bytes

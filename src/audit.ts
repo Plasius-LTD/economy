@@ -12,6 +12,11 @@ import {
 import { economyAssert } from "./errors.js";
 import type { EconomyCommandType } from "./ports/persistence.js";
 
+/** Additive authoritative command types; legacy V1/V2 command unions stay unchanged. */
+export type EconomyAuditedCommandTypeV1 =
+  | EconomyCommandType
+  | "initialize-wallet";
+
 export type EconomyCommandSourceV1 =
   | "browser"
   | "shopify"
@@ -87,7 +92,7 @@ export interface EconomyAuthorizationEvidenceV1 {
 export interface AuditedEconomyCommandEnvelopeV1 {
   readonly schemaVersion: EconomyContractVersion;
   readonly commandId: string;
-  readonly commandType: EconomyCommandType;
+  readonly commandType: EconomyAuditedCommandTypeV1;
   readonly commandSource: EconomyCommandSourceV1;
   readonly idempotencyFingerprint: EconomyHmacFingerprintV1;
   readonly actorAccountId: AccountId;
@@ -221,7 +226,7 @@ export interface EconomyCommandResultReceiptV1 {
 export interface EconomyAuditedIdempotencyScopeV1 {
   readonly schemaVersion: EconomyContractVersion;
   readonly idempotencyFingerprint: EconomyHmacFingerprintV1;
-  readonly commandType: EconomyCommandType;
+  readonly commandType: EconomyAuditedCommandTypeV1;
   readonly actorAccountId: AccountId;
   readonly subjectAccountId: AccountId;
   readonly principalType: EconomyPrincipalTypeV1;
@@ -258,7 +263,7 @@ export type EconomyCommandProcessingDispositionV1 =
       readonly result: EconomyAuditedIdempotencyResultV1;
     };
 
-const COMMAND_TYPES = new Set<EconomyCommandType>([
+const COMMAND_TYPES = new Set<EconomyAuditedCommandTypeV1>([
   "credit-purchase",
   "credit-subscription",
   "credit-reward",
@@ -274,6 +279,7 @@ const COMMAND_TYPES = new Set<EconomyCommandType>([
   "chargeback",
   "reverse",
   "adjust",
+  "initialize-wallet",
 ]);
 
 const COMMAND_SOURCES = new Set<EconomyCommandSourceV1>([
@@ -321,7 +327,7 @@ const FINGERPRINT_DOMAINS = new Set<EconomyHmacFingerprintDomainV1>([
 ]);
 
 const SOURCE_COMMAND_TYPES: Readonly<
-  Record<EconomyCommandSourceV1, ReadonlySet<EconomyCommandType>>
+  Record<EconomyCommandSourceV1, ReadonlySet<EconomyAuditedCommandTypeV1>>
 > = {
   browser: new Set([
     "allocate",
@@ -330,6 +336,7 @@ const SOURCE_COMMAND_TYPES: Readonly<
     "spend",
     "hold",
     "release-hold",
+    "initialize-wallet",
   ]),
   shopify: new Set([
     "credit-purchase",
@@ -561,6 +568,17 @@ function assertCommandSourcePrincipal(
         envelope.relationshipId !== undefined,
       "INVALID_CONTRACT",
       "Delegated-child commands require a distinct actor and relationship",
+    );
+  }
+  if (envelope.commandType === "initialize-wallet") {
+    economyAssert(
+      envelope.commandSource === "browser" &&
+        envelope.principalType === "account" &&
+        envelope.actorAccountId === envelope.subjectAccountId &&
+        envelope.relationshipId === undefined &&
+        envelope.authorizationVersion === undefined,
+      "INVALID_CONTRACT",
+      "Wallet initialization requires a direct self-account browser command",
     );
   }
 }
