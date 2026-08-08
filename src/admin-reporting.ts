@@ -71,6 +71,10 @@ export type AdminTokenPseudonymAudienceV1 =
   | "admin-token-activity"
   | "mcp-token-activity";
 
+export type AdminTokenBalancePseudonymAudienceV1 =
+  | "admin-token-balances"
+  | "mcp-token-balances";
+
 export interface AdminTokenReportingWindowV1 {
   readonly fromInclusive: IsoTimestamp;
   readonly toExclusive: IsoTimestamp;
@@ -151,6 +155,107 @@ export interface AdminTokenActivityPageV1 {
   readonly hasMore: boolean;
   readonly nextCursor?: string;
   readonly metadata: AdminTokenActivityResultMetadataV1;
+}
+
+export interface AdminTokenAggregateBalancesV1 {
+  readonly schemaVersion: EconomyContractVersion;
+  readonly available: TokenSubunitString;
+  readonly reserved: TokenSubunitString;
+  readonly held: TokenSubunitString;
+  readonly rewardProgress: TokenSubunitString;
+}
+
+export interface AdminTokenAggregateLifetimeV1 {
+  readonly schemaVersion: EconomyContractVersion;
+  readonly bought: TokenSubunitString;
+  readonly earned: TokenSubunitString;
+  readonly allocated: TokenSubunitString;
+  readonly reclaimed: TokenSubunitString;
+  readonly spent: TokenSubunitString;
+  readonly reversed: TokenSubunitString;
+}
+
+/** Point-read global projection. It contains no account or wallet identity. */
+export interface AdminTokenEconomySummaryV1 {
+  readonly schemaVersion: EconomyContractVersion;
+  readonly generatedAt: IsoTimestamp;
+  readonly projectionAsOf: IsoTimestamp;
+  readonly authoritySequence: string;
+  readonly walletCount: number;
+  readonly activeWalletCount: number;
+  readonly balances: AdminTokenAggregateBalancesV1;
+  readonly lifetime: AdminTokenAggregateLifetimeV1;
+  readonly rawIdentifiersIncluded: false;
+}
+
+export type AdminTokenWalletComponentV1 =
+  | "household"
+  | "personal"
+  | "gameplay-allocation";
+
+export type AdminTokenWalletStatusV1 = "active" | "closed";
+
+export type AdminTokenWalletBalanceSortV1 =
+  | "available-desc"
+  | "updated-at-desc";
+
+export interface AdminTokenWalletBalanceEntryV1 {
+  readonly schemaVersion: EconomyContractVersion;
+  readonly walletAlias: string;
+  readonly subjectAlias: string;
+  readonly component: AdminTokenWalletComponentV1;
+  readonly status: AdminTokenWalletStatusV1;
+  readonly available: TokenSubunitString;
+  readonly reserved: TokenSubunitString;
+  readonly held: TokenSubunitString;
+  readonly rewardProgress: TokenSubunitString;
+  readonly updatedAt: IsoTimestamp;
+  readonly authoritySequence: string;
+}
+
+export interface AdminTokenWalletBalanceFilterV1 {
+  readonly components?: readonly AdminTokenWalletComponentV1[];
+  readonly statuses?: readonly AdminTokenWalletStatusV1[];
+  readonly subjectAlias?: string;
+}
+
+export interface AdminTokenWalletBalanceCursorBindingV1 {
+  readonly schemaVersion: EconomyContractVersion;
+  readonly sort: AdminTokenWalletBalanceSortV1;
+  readonly filter?: AdminTokenWalletBalanceFilterV1;
+  readonly audience: AdminTokenBalancePseudonymAudienceV1;
+  readonly pseudonymVersion: string;
+}
+
+export interface AdminTokenWalletBalancePageRequestV1 {
+  readonly schemaVersion: EconomyContractVersion;
+  readonly limit: number;
+  readonly cursor?: string;
+  /** Trusted binding produced only after the host verifies the opaque cursor. */
+  readonly cursorBinding?: AdminTokenWalletBalanceCursorBindingV1;
+  readonly sort: AdminTokenWalletBalanceSortV1;
+  readonly filter?: AdminTokenWalletBalanceFilterV1;
+  readonly audience: AdminTokenBalancePseudonymAudienceV1;
+  readonly pseudonymVersion: string;
+}
+
+export interface AdminTokenWalletBalanceResultMetadataV1 {
+  readonly schemaVersion: EconomyContractVersion;
+  readonly generatedAt: IsoTimestamp;
+  readonly sort: AdminTokenWalletBalanceSortV1;
+  readonly filter?: AdminTokenWalletBalanceFilterV1;
+  readonly pageLimit: number;
+  readonly audience: AdminTokenBalancePseudonymAudienceV1;
+  readonly pseudonymVersion: string;
+  readonly rawIdentifiersIncluded: false;
+}
+
+export interface AdminTokenWalletBalancePageV1 {
+  readonly schemaVersion: EconomyContractVersion;
+  readonly entries: readonly AdminTokenWalletBalanceEntryV1[];
+  readonly hasMore: boolean;
+  readonly nextCursor?: string;
+  readonly metadata: AdminTokenWalletBalanceResultMetadataV1;
 }
 
 export type AdminTokenTrendGranularityV1 = "hour" | "day";
@@ -289,6 +394,10 @@ export interface AdminTokenTrendResultV1 {
  * query timeouts, rate limits, and database access remain host responsibilities.
  */
 export interface AdminEconomyReportingQueryPortV1 {
+  getAdminTokenEconomySummary(): Promise<AdminTokenEconomySummaryV1>;
+  listAdminTokenWalletBalances(
+    request: AdminTokenWalletBalancePageRequestV1,
+  ): Promise<AdminTokenWalletBalancePageV1>;
   listAdminTokenActivity(
     request: AdminTokenActivityPageRequestV1,
   ): Promise<AdminTokenActivityPageV1>;
@@ -364,6 +473,24 @@ const PSEUDONYM_AUDIENCES = new Set<AdminTokenPseudonymAudienceV1>([
   "admin-token-activity",
   "mcp-token-activity",
 ]);
+const BALANCE_PSEUDONYM_AUDIENCES =
+  new Set<AdminTokenBalancePseudonymAudienceV1>([
+    "admin-token-balances",
+    "mcp-token-balances",
+  ]);
+const WALLET_COMPONENTS = new Set<AdminTokenWalletComponentV1>([
+  "household",
+  "personal",
+  "gameplay-allocation",
+]);
+const WALLET_STATUSES = new Set<AdminTokenWalletStatusV1>([
+  "active",
+  "closed",
+]);
+const WALLET_BALANCE_SORTS = new Set<AdminTokenWalletBalanceSortV1>([
+  "available-desc",
+  "updated-at-desc",
+]);
 const TREND_GRANULARITIES = new Set<AdminTokenTrendGranularityV1>([
   "hour",
   "day",
@@ -372,6 +499,7 @@ const ALIAS = /^[A-Za-z0-9_-]{16,96}$/u;
 const OPAQUE_CURSOR = /^c1\.[A-Za-z0-9_-]{32,480}$/u;
 const PSEUDONYM_VERSION = /^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/u;
 const EXACT_STATISTIC_INTEGER = /^(?:0|-?[1-9][0-9]*)$/u;
+const POSITIVE_UNSIGNED_INTEGER = /^[1-9][0-9]*$/u;
 const MAXIMUM_STATISTIC_HALF_SUBUNITS =
   (TOKEN_SUBUNITS_MAX - TOKEN_SUBUNITS_MIN) * 2n;
 const ANOMALY_UNAVAILABLE_REASONS =
@@ -500,6 +628,387 @@ export function createDefaultAdminTokenReportingWindow(
     ).toISOString(),
     toExclusive: new Date(to).toISOString(),
   };
+}
+
+function assertNonNegativeTokenAmounts(
+  amounts: readonly TokenSubunitString[],
+  label: string,
+): void {
+  economyAssert(
+    amounts.every((amount) => parseTokenSubunits(amount) >= 0n),
+    "INVALID_AMOUNT",
+    `${label} cannot contain a negative amount`,
+  );
+}
+
+function assertPositiveAuthoritySequence(
+  sequence: string,
+  label: string,
+): void {
+  economyAssert(
+    typeof sequence === "string"
+      && POSITIVE_UNSIGNED_INTEGER.test(sequence),
+    "INVALID_CONTRACT",
+    `${label} must be a canonical positive integer`,
+  );
+}
+
+/** Validates a point-read global economy projection with exact totals. */
+export function assertAdminTokenEconomySummary(
+  summary: AdminTokenEconomySummaryV1,
+): void {
+  assertExactKeys(
+    summary,
+    [
+      "schemaVersion",
+      "generatedAt",
+      "projectionAsOf",
+      "authoritySequence",
+      "walletCount",
+      "activeWalletCount",
+      "balances",
+      "lifetime",
+      "rawIdentifiersIncluded",
+    ],
+    "Admin Token economy summary",
+  );
+  assertExactKeys(
+    summary.balances,
+    ["schemaVersion", "available", "reserved", "held", "rewardProgress"],
+    "Admin Token aggregate balances",
+  );
+  assertExactKeys(
+    summary.lifetime,
+    [
+      "schemaVersion",
+      "bought",
+      "earned",
+      "allocated",
+      "reclaimed",
+      "spent",
+      "reversed",
+    ],
+    "Admin Token aggregate lifetime",
+  );
+  economyAssert(
+    summary.schemaVersion === ECONOMY_CONTRACT_VERSION
+      && summary.balances.schemaVersion === ECONOMY_CONTRACT_VERSION
+      && summary.lifetime.schemaVersion === ECONOMY_CONTRACT_VERSION
+      && summary.rawIdentifiersIncluded === false
+      && Number.isSafeInteger(summary.walletCount)
+      && summary.walletCount >= 0
+      && Number.isSafeInteger(summary.activeWalletCount)
+      && summary.activeWalletCount >= 0
+      && summary.activeWalletCount <= summary.walletCount,
+    "INVALID_CONTRACT",
+    "Admin Token economy summary metadata is invalid",
+  );
+  const generatedAt = parseIsoTimestamp(summary.generatedAt);
+  const projectionAsOf = parseIsoTimestamp(summary.projectionAsOf);
+  economyAssert(
+    projectionAsOf <= generatedAt,
+    "INVALID_TIME_WINDOW",
+    "Admin Token projection cannot be newer than its generated result",
+  );
+  assertPositiveAuthoritySequence(
+    summary.authoritySequence,
+    "Admin Token summary authority sequence",
+  );
+  assertNonNegativeTokenAmounts(
+    [
+      summary.balances.available,
+      summary.balances.reserved,
+      summary.balances.held,
+      summary.balances.rewardProgress,
+      summary.lifetime.bought,
+      summary.lifetime.earned,
+      summary.lifetime.allocated,
+      summary.lifetime.reclaimed,
+      summary.lifetime.spent,
+      summary.lifetime.reversed,
+    ],
+    "Admin Token economy summary",
+  );
+}
+
+function assertAdminTokenWalletBalanceFilter(
+  filter: AdminTokenWalletBalanceFilterV1,
+): void {
+  assertExactKeys(
+    filter,
+    ["components", "statuses", "subjectAlias"],
+    "Admin Token wallet balance filter",
+  );
+  if (filter.components !== undefined) {
+    assertUniqueValues(
+      filter.components,
+      WALLET_COMPONENTS,
+      "Admin Token wallet components",
+    );
+  }
+  if (filter.statuses !== undefined) {
+    assertUniqueValues(
+      filter.statuses,
+      WALLET_STATUSES,
+      "Admin Token wallet statuses",
+    );
+  }
+  if (filter.subjectAlias !== undefined) {
+    assertAlias(filter.subjectAlias, "Wallet subject alias filter");
+  }
+}
+
+function sameWalletBalanceFilter(
+  left: AdminTokenWalletBalanceFilterV1 | undefined,
+  right: AdminTokenWalletBalanceFilterV1 | undefined,
+): boolean {
+  if (left === undefined || right === undefined) {
+    return left === right;
+  }
+  return sameOptionalValues(left.components, right.components)
+    && sameOptionalValues(left.statuses, right.statuses)
+    && left.subjectAlias === right.subjectAlias;
+}
+
+export function assertAdminTokenWalletBalanceCursorBinding(
+  binding: AdminTokenWalletBalanceCursorBindingV1,
+): void {
+  assertExactKeys(
+    binding,
+    [
+      "schemaVersion",
+      "sort",
+      "filter",
+      "audience",
+      "pseudonymVersion",
+    ],
+    "Admin Token wallet balance cursor binding",
+  );
+  economyAssert(
+    binding.schemaVersion === ECONOMY_CONTRACT_VERSION
+      && WALLET_BALANCE_SORTS.has(binding.sort)
+      && BALANCE_PSEUDONYM_AUDIENCES.has(binding.audience)
+      && PSEUDONYM_VERSION.test(binding.pseudonymVersion),
+    "INVALID_CONTRACT",
+    "Unsupported Admin Token wallet balance cursor binding",
+  );
+  if (binding.filter !== undefined) {
+    assertAdminTokenWalletBalanceFilter(binding.filter);
+  }
+}
+
+export function assertAdminTokenWalletBalancePageRequest(
+  request: AdminTokenWalletBalancePageRequestV1,
+): void {
+  assertExactKeys(
+    request,
+    [
+      "schemaVersion",
+      "limit",
+      "cursor",
+      "cursorBinding",
+      "sort",
+      "filter",
+      "audience",
+      "pseudonymVersion",
+    ],
+    "Admin Token wallet balance request",
+  );
+  economyAssert(
+    request.schemaVersion === ECONOMY_CONTRACT_VERSION
+      && Number.isSafeInteger(request.limit)
+      && request.limit >= 1
+      && request.limit <= ADMIN_TOKEN_MAXIMUM_PAGE_SIZE
+      && WALLET_BALANCE_SORTS.has(request.sort)
+      && BALANCE_PSEUDONYM_AUDIENCES.has(request.audience)
+      && PSEUDONYM_VERSION.test(request.pseudonymVersion),
+    "INVALID_CONTRACT",
+    "Unsupported or unbounded Admin Token wallet balance request",
+  );
+  if (request.filter !== undefined) {
+    assertAdminTokenWalletBalanceFilter(request.filter);
+  }
+  economyAssert(
+    (request.cursor === undefined) === (request.cursorBinding === undefined),
+    "INVALID_CONTRACT",
+    "Admin Token wallet balance cursor and binding must be provided together",
+  );
+  if (request.cursor === undefined || request.cursorBinding === undefined) {
+    return;
+  }
+  assertOpaqueCursor(request.cursor);
+  assertAdminTokenWalletBalanceCursorBinding(request.cursorBinding);
+  economyAssert(
+    request.cursorBinding.sort === request.sort
+      && request.cursorBinding.audience === request.audience
+      && request.cursorBinding.pseudonymVersion === request.pseudonymVersion
+      && sameWalletBalanceFilter(request.cursorBinding.filter, request.filter),
+    "INVALID_CONTRACT",
+    "Admin Token wallet balance cursor is not bound to the normalized query",
+  );
+}
+
+function assertAdminTokenWalletBalanceEntry(
+  entry: AdminTokenWalletBalanceEntryV1,
+): void {
+  assertExactKeys(
+    entry,
+    [
+      "schemaVersion",
+      "walletAlias",
+      "subjectAlias",
+      "component",
+      "status",
+      "available",
+      "reserved",
+      "held",
+      "rewardProgress",
+      "updatedAt",
+      "authoritySequence",
+    ],
+    "Admin Token wallet balance entry",
+  );
+  economyAssert(
+    entry.schemaVersion === ECONOMY_CONTRACT_VERSION
+      && WALLET_COMPONENTS.has(entry.component)
+      && WALLET_STATUSES.has(entry.status),
+    "INVALID_CONTRACT",
+    "Unsupported Admin Token wallet balance entry",
+  );
+  assertAlias(entry.walletAlias, "Wallet alias");
+  assertAlias(entry.subjectAlias, "Wallet subject alias");
+  economyAssert(
+    entry.walletAlias !== entry.subjectAlias,
+    "INVALID_CONTRACT",
+    "Wallet and subject aliases must use separate pseudonym domains",
+  );
+  assertNonNegativeTokenAmounts(
+    [entry.available, entry.reserved, entry.held, entry.rewardProgress],
+    "Admin Token wallet balance entry",
+  );
+  parseIsoTimestamp(entry.updatedAt);
+  assertPositiveAuthoritySequence(
+    entry.authoritySequence,
+    "Admin Token wallet balance authority sequence",
+  );
+}
+
+function compareWalletBalanceEntries(
+  left: AdminTokenWalletBalanceEntryV1,
+  right: AdminTokenWalletBalanceEntryV1,
+  sort: AdminTokenWalletBalanceSortV1,
+): number {
+  if (sort === "available-desc") {
+    const leftAvailable = parseTokenSubunits(left.available);
+    const rightAvailable = parseTokenSubunits(right.available);
+    if (leftAvailable !== rightAvailable) {
+      return leftAvailable > rightAvailable ? -1 : 1;
+    }
+  }
+  const leftUpdatedAt = parseIsoTimestamp(left.updatedAt);
+  const rightUpdatedAt = parseIsoTimestamp(right.updatedAt);
+  if (leftUpdatedAt !== rightUpdatedAt) {
+    return leftUpdatedAt > rightUpdatedAt ? -1 : 1;
+  }
+  return compareTextDescending(left.walletAlias, right.walletAlias);
+}
+
+export function assertAdminTokenWalletBalancePage(
+  page: AdminTokenWalletBalancePageV1,
+): void {
+  assertExactKeys(
+    page,
+    ["schemaVersion", "entries", "hasMore", "nextCursor", "metadata"],
+    "Admin Token wallet balance page",
+  );
+  assertExactKeys(
+    page.metadata,
+    [
+      "schemaVersion",
+      "generatedAt",
+      "sort",
+      "filter",
+      "pageLimit",
+      "audience",
+      "pseudonymVersion",
+      "rawIdentifiersIncluded",
+    ],
+    "Admin Token wallet balance metadata",
+  );
+  economyAssert(
+    page.schemaVersion === ECONOMY_CONTRACT_VERSION
+      && page.metadata.schemaVersion === ECONOMY_CONTRACT_VERSION
+      && typeof page.hasMore === "boolean"
+      && page.metadata.rawIdentifiersIncluded === false
+      && WALLET_BALANCE_SORTS.has(page.metadata.sort)
+      && BALANCE_PSEUDONYM_AUDIENCES.has(page.metadata.audience)
+      && PSEUDONYM_VERSION.test(page.metadata.pseudonymVersion)
+      && Number.isSafeInteger(page.metadata.pageLimit)
+      && page.metadata.pageLimit >= 1
+      && page.metadata.pageLimit <= ADMIN_TOKEN_MAXIMUM_PAGE_SIZE
+      && Array.isArray(page.entries)
+      && page.entries.length <= page.metadata.pageLimit
+      && page.hasMore === (page.nextCursor !== undefined)
+      && (!page.hasMore || page.entries.length > 0),
+    "INVALID_CONTRACT",
+    "Unsupported or unbounded Admin Token wallet balance page",
+  );
+  if (page.metadata.filter !== undefined) {
+    assertAdminTokenWalletBalanceFilter(page.metadata.filter);
+  }
+  parseIsoTimestamp(page.metadata.generatedAt);
+  if (page.nextCursor !== undefined) {
+    assertOpaqueCursor(page.nextCursor);
+  }
+
+  const walletAliases = new Set<string>();
+  let previous: AdminTokenWalletBalanceEntryV1 | undefined;
+  for (const entry of page.entries) {
+    assertAdminTokenWalletBalanceEntry(entry);
+    const filter = page.metadata.filter;
+    economyAssert(
+      filter === undefined
+        || ((filter.components === undefined
+          || filter.components.includes(entry.component))
+        && (filter.statuses === undefined
+          || filter.statuses.includes(entry.status))
+        && (filter.subjectAlias === undefined
+          || filter.subjectAlias === entry.subjectAlias)),
+      "INVALID_CONTRACT",
+      "Admin Token wallet balance result contains an unrequested row",
+    );
+    economyAssert(
+      !walletAliases.has(entry.walletAlias),
+      "DUPLICATE_IDENTIFIER",
+      "Admin Token wallet balance page cannot repeat a wallet alias",
+    );
+    walletAliases.add(entry.walletAlias);
+    if (previous !== undefined) {
+      economyAssert(
+        compareWalletBalanceEntries(previous, entry, page.metadata.sort) < 0,
+        "INVALID_CONTRACT",
+        "Admin Token wallet balance page does not use its declared stable sort",
+      );
+    }
+    previous = entry;
+  }
+}
+
+export function assertAdminTokenWalletBalancePageForRequest(
+  page: AdminTokenWalletBalancePageV1,
+  request: AdminTokenWalletBalancePageRequestV1,
+): void {
+  assertAdminTokenWalletBalancePageRequest(request);
+  assertAdminTokenWalletBalancePage(page);
+  economyAssert(
+    page.metadata.sort === request.sort
+      && sameWalletBalanceFilter(page.metadata.filter, request.filter)
+      && page.metadata.pageLimit === request.limit
+      && page.metadata.audience === request.audience
+      && page.metadata.pseudonymVersion === request.pseudonymVersion,
+    "INVALID_CONTRACT",
+    "Admin Token wallet balance result does not match its normalized request",
+  );
 }
 
 /** Validates one narrow row and rejects all undeclared identifier properties. */

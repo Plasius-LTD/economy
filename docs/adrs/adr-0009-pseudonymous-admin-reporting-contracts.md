@@ -7,8 +7,9 @@
 
 ## Context
 
-Finance operators need bounded Token activity and trend reads to identify
-acquisition and usage spikes. The authoritative journal remains immutable and
+Finance operators need global balance/lifetime, bounded wallet/activity, and
+trend reads to identify economy state, acquisition, and usage spikes. The
+authoritative journal remains immutable and
 contains identifiers that must not be exposed through routine Admin or MCP
 reads. Provider names, account, wallet, order, payment, idempotency, transaction,
 and journal-integrity identifiers are unnecessary for this purpose.
@@ -23,8 +24,15 @@ remain explainable and must never become an automatic financial mutation.
 
 ## Decision
 
-- Add the versioned `AdminEconomyReportingQueryPortV1` activity and trend
-  contracts without changing the immutable ledger or existing query port.
+- Add the versioned `AdminEconomyReportingQueryPortV1` global summary, wallet
+  balance, activity, and trend contracts without changing the immutable ledger
+  or existing query port.
+- Global summaries contain exact aggregate balances/lifetime counters, wallet
+  counts, projection time, and positive authority sequence, but no identity.
+- Wallet pages contain only separate audience-bound wallet/subject aliases,
+  closed component/status codes, exact non-negative balances, update time, and
+  authority sequence. Pages use signed opaque cursors, a 100-row cap, and
+  stable available- or update-time-descending sorts.
 - Activity rows contain only time, normalized activity type/status/source,
   signed TokenSubunits, a closed safe-label code, and opaque row and subject
   aliases. Presentation layers map label codes to localized text. Runtime
@@ -63,7 +71,7 @@ remain explainable and must never become an automatic financial mutation.
 ## Consequences
 
 - Site and MCP adapters share one privacy contract and can prove that ordinary
-  activity responses contain no raw identifiers.
+  balance, activity, and trend responses contain no raw identifiers.
 - Audience separation remains enforceable without placing an HMAC secret or
   cryptographic implementation in this package.
 - Conventional median/MAD values remain deterministic and exact without

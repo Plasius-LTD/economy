@@ -6,11 +6,13 @@ promotion is owned by the approved GitHub CD workflow.
 ## Unreleased
 
 - **Added**
-  - Added bounded, provider-neutral Admin Token activity, trend, suppression,
-    pseudonym metadata, and explainable 28-window median/MAD contracts.
+  - Added bounded, provider-neutral Admin Token global balance/lifetime,
+    pseudonymous wallet balance, activity, trend, suppression, projection
+    freshness, and explainable 28-window median/MAD contracts.
 
 - **Changed**
-  - Exported a read-only Admin reporting query port while keeping
+  - Exported a read-only Admin reporting query port for point-read summaries,
+    cursor-paginated balances/activity, and bounded trends while keeping
     authentication, HMAC aliases, persistence, MCP, and remediation outside the
     package.
   - Bound resumed activity queries to trusted decoded cursor scope, made
@@ -23,8 +25,9 @@ promotion is owned by the approved GitHub CD workflow.
 - **Security**
   - Admin reporting validators reject undeclared identifying fields,
     provider-specific sources, free-form labels, serialization hooks, malformed
-    aliases, cursor replay across query scopes, cohorts below five, and
-    interactive queries beyond their supported bounds.
+    aliases, non-canonical projection sequences, cursor replay across query
+    scopes, cohorts below five, and interactive queries beyond their supported
+    bounds.
 
 ## [0.7.0] - 2026-08-01
 

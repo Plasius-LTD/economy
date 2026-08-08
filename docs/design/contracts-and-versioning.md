@@ -84,7 +84,8 @@ fails integrity validation rather than being silently completed.
 ## Admin reporting boundary
 
 `AdminEconomyReportingQueryPortV1` is an additive, read-only contract for
-bounded operational reporting. Activity entries deliberately omit account,
+identifier-free global summaries plus bounded pseudonymous wallet, activity,
+and trend reporting. Wallet and activity entries deliberately omit account,
 wallet, transaction, order, payment, provider-event, idempotency, and journal
 integrity identifiers. Runtime validators accept plain enumerable data
 properties only, reject serialization hooks, and use exact property and safe
@@ -98,6 +99,12 @@ Resumed requests include a confidentiality-protected opaque cursor with no raw
 identifiers and a trusted decoded binding to their normalized window, sort,
 filters, pseudonym audience, and version. Result metadata echoes the normalized
 filter. Failure rows alone may carry zero when no economic amount exists.
+
+Global summaries carry exact aggregate balance/lifetime totals, wallet counts,
+and the canonical positive authority sequence through which the rebuildable
+projection is current. Wallet balance pages use a separate pseudonym audience,
+closed component/status codes, signed opaque cursors, a 100-row maximum, and
+stable available- or update-time-descending ordering.
 
 Trend points below five distinct subjects are suppression records with no
 counts or amounts. Reported points carry either a deterministic conventional

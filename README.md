@@ -445,12 +445,21 @@ never expands the authorized portfolio scope.
 
 ## Pseudonymous Admin reporting
 
-`AdminEconomyReportingQueryPortV1` defines provider-neutral activity and trend
-results for governed finance operations. It does not grant access or query a
-database. A host must authenticate the caller, enforce the stored rollout flags
+`AdminEconomyReportingQueryPortV1` defines provider-neutral global summary,
+pseudonymous wallet balance, activity, and trend results for governed finance
+operations. It does not grant access or query a database. A host must
+authenticate the caller, enforce the stored rollout flags
 `economy.admin-history.enabled` and `mcp.admin-economy-history.enabled` as
 applicable, re-check the finance capability, and use a least-privilege
 reporting projection.
+
+The global summary is an identifier-free point-read projection. It contains
+exact available, reserved, held, reward-progress and lifetime totals, wallet
+counts, and the canonical positive authority sequence through which the
+projection is current. Wallet balance pages contain separate audience-bound
+wallet and subject aliases, a closed component/status code, exact non-negative
+amounts, update time, and authority sequence. They are capped at 100 rows and
+support stable available-descending or update-time-descending pagination.
 
 Activity rows are deliberately narrow:
 

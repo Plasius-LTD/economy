@@ -8,9 +8,13 @@ import {
   assertAdminTokenActivityPage,
   assertAdminTokenActivityPageForRequest,
   assertAdminTokenActivityPageRequest,
+  assertAdminTokenEconomySummary,
   assertAdminTokenTrendResult,
   assertAdminTokenTrendResultForRequest,
   assertAdminTokenTrendRequest,
+  assertAdminTokenWalletBalancePage,
+  assertAdminTokenWalletBalancePageForRequest,
+  assertAdminTokenWalletBalancePageRequest,
   createAdminTokenAnomalyIndicator,
   createAdminTokenAnomalyUnavailable,
   createDefaultAdminTokenReportingWindow,
@@ -19,7 +23,11 @@ import {
   type AdminTokenActivityPageV1,
   type AdminTokenActivityPageRequestV1,
   type AdminTokenActivityTypeV1,
+  type AdminTokenEconomySummaryV1,
   type AdminTokenTrendResultV1,
+  type AdminTokenWalletBalanceEntryV1,
+  type AdminTokenWalletBalancePageRequestV1,
+  type AdminTokenWalletBalancePageV1,
 } from "../src/index.js";
 
 const at = (day: number, hour = 0): string =>
@@ -57,6 +65,154 @@ const activityPage = (
     pseudonymVersion: "hmac-v1",
     rawIdentifiersIncluded: false,
   },
+});
+
+const economySummary = (
+  overrides: Partial<AdminTokenEconomySummaryV1> = {},
+): AdminTokenEconomySummaryV1 => ({
+  schemaVersion: "1",
+  generatedAt: at(30, 13),
+  projectionAsOf: at(30, 12),
+  authoritySequence: "42",
+  walletCount: 8,
+  activeWalletCount: 7,
+  balances: {
+    schemaVersion: "1",
+    available: serializeTokenSubunits(125_000n),
+    reserved: serializeTokenSubunits(10_000n),
+    held: serializeTokenSubunits(5_000n),
+    rewardProgress: serializeTokenSubunits(750n),
+  },
+  lifetime: {
+    schemaVersion: "1",
+    bought: serializeTokenSubunits(100_000n),
+    earned: serializeTokenSubunits(50_000n),
+    allocated: serializeTokenSubunits(20_000n),
+    reclaimed: serializeTokenSubunits(5_000n),
+    spent: serializeTokenSubunits(15_000n),
+    reversed: serializeTokenSubunits(2_500n),
+  },
+  rawIdentifiersIncluded: false,
+  ...overrides,
+});
+
+const walletBalance = (
+  overrides: Partial<AdminTokenWalletBalanceEntryV1> = {},
+): AdminTokenWalletBalanceEntryV1 => ({
+  schemaVersion: "1",
+  walletAlias: "wallet_1aQ4EMTVlKpfqtX30w3Paw",
+  subjectAlias: "subject_1QvNq_Rp4bJSCcHkh7d4ZTQ",
+  component: "personal",
+  status: "active",
+  available: serializeTokenSubunits(50_000n),
+  reserved: serializeTokenSubunits(0n),
+  held: serializeTokenSubunits(0n),
+  rewardProgress: serializeTokenSubunits(250n),
+  updatedAt: at(30, 12),
+  authoritySequence: "42",
+  ...overrides,
+});
+
+const walletBalancePage = (
+  entries: readonly AdminTokenWalletBalanceEntryV1[],
+): AdminTokenWalletBalancePageV1 => ({
+  schemaVersion: "1",
+  entries,
+  hasMore: false,
+  metadata: {
+    schemaVersion: "1",
+    generatedAt: at(30, 13),
+    sort: "available-desc",
+    pageLimit: 100,
+    audience: "admin-token-balances",
+    pseudonymVersion: "hmac-v1",
+    rawIdentifiersIncluded: false,
+  },
+});
+
+describe("privacy-safe Admin Token global balance contracts", () => {
+  it("validates exact aggregate balances and projection freshness", () => {
+    expect(() => assertAdminTokenEconomySummary(economySummary())).not.toThrow();
+  });
+
+  it("rejects raw identifiers, negative totals, and non-canonical sequences", () => {
+    expect(() =>
+      assertAdminTokenEconomySummary({
+        ...economySummary(),
+        accountId: "account:raw",
+      } as AdminTokenEconomySummaryV1),
+    ).toThrowError(expect.objectContaining({ code: "INVALID_CONTRACT" }));
+    expect(() =>
+      assertAdminTokenEconomySummary(
+        economySummary({
+          balances: {
+            ...economySummary().balances,
+            available: serializeTokenSubunits(-1n),
+          },
+        }),
+      ),
+    ).toThrowError(expect.objectContaining({ code: "INVALID_AMOUNT" }));
+    expect(() =>
+      assertAdminTokenEconomySummary(
+        economySummary({ authoritySequence: "042" }),
+      ),
+    ).toThrowError(expect.objectContaining({ code: "INVALID_CONTRACT" }));
+  });
+
+  it("validates bounded, pseudonymous, stably sorted wallet pages", () => {
+    const request: AdminTokenWalletBalancePageRequestV1 = {
+      schemaVersion: "1",
+      limit: 100,
+      sort: "available-desc",
+      audience: "admin-token-balances",
+      pseudonymVersion: "hmac-v1",
+    };
+    const page = walletBalancePage([
+      walletBalance(),
+      walletBalance({
+        walletAlias: "wallet_2aQ4EMTVlKpfqtX30w3Paw",
+        subjectAlias: "subject_2QvNq_Rp4bJSCcHkh7d4ZTQ",
+        available: serializeTokenSubunits(10_000n),
+        authoritySequence: "41",
+      }),
+    ]);
+
+    expect(() => assertAdminTokenWalletBalancePageRequest(request)).not.toThrow();
+    expect(() => assertAdminTokenWalletBalancePage(page)).not.toThrow();
+    expect(() =>
+      assertAdminTokenWalletBalancePageForRequest(page, request),
+    ).not.toThrow();
+  });
+
+  it("rejects raw wallet identifiers, duplicate aliases, and unstable ordering", () => {
+    expect(() =>
+      assertAdminTokenWalletBalancePage(
+        walletBalancePage([
+          {
+            ...walletBalance(),
+            walletId: "wallet:raw",
+          } as AdminTokenWalletBalanceEntryV1,
+        ]),
+      ),
+    ).toThrowError(expect.objectContaining({ code: "INVALID_CONTRACT" }));
+    expect(() =>
+      assertAdminTokenWalletBalancePage(
+        walletBalancePage([walletBalance(), walletBalance()]),
+      ),
+    ).toThrowError(expect.objectContaining({ code: "DUPLICATE_IDENTIFIER" }));
+    expect(() =>
+      assertAdminTokenWalletBalancePage(
+        walletBalancePage([
+          walletBalance({ available: serializeTokenSubunits(10_000n) }),
+          walletBalance({
+            walletAlias: "wallet_2aQ4EMTVlKpfqtX30w3Paw",
+            subjectAlias: "subject_2QvNq_Rp4bJSCcHkh7d4ZTQ",
+            available: serializeTokenSubunits(50_000n),
+          }),
+        ]),
+      ),
+    ).toThrowError(expect.objectContaining({ code: "INVALID_CONTRACT" }));
+  });
 });
 
 describe("privacy-safe Admin Token activity contracts", () => {
