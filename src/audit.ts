@@ -15,7 +15,8 @@ import type { EconomyCommandType } from "./ports/persistence.js";
 /** Additive authoritative command types; legacy V1/V2 command unions stay unchanged. */
 export type EconomyAuditedCommandTypeV1 =
   | EconomyCommandType
-  | "initialize-wallet";
+  | "initialize-wallet"
+  | "initialize-admin-reporting";
 
 export type EconomyCommandSourceV1 =
   | "browser"
@@ -280,6 +281,7 @@ const COMMAND_TYPES = new Set<EconomyAuditedCommandTypeV1>([
   "reverse",
   "adjust",
   "initialize-wallet",
+  "initialize-admin-reporting",
 ]);
 
 const COMMAND_SOURCES = new Set<EconomyCommandSourceV1>([
@@ -352,6 +354,7 @@ const SOURCE_COMMAND_TYPES: Readonly<
   system: new Set([
     "credit-event",
     "credit-competition",
+    "initialize-admin-reporting",
     "hold",
     "release-hold",
     "reverse",

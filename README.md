@@ -437,6 +437,12 @@ principal only and terminates with `WALLET_INITIALIZED` or
 double-entry transaction or Token activity row and does not authorize value or
 provider writes.
 
+`initialize-admin-reporting` is also additive to the audited command union. It
+is restricted to a service principal and the system source so a host can bind
+one create-only reporting bootstrap to its normal authority head, manifest,
+receipt, and idempotency evidence. It does not authorize a balance mutation or
+replace an existing reporting projection.
+
 Activity reads use bounded opaque cursor pagination in stable descending
 `(occurredAt, activityId)` order. Each row retains the component `walletId`
 whose signed display amount it represents. Cursor contents and signatures are
