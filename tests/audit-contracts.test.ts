@@ -189,6 +189,40 @@ describe("privacy-minimized economy audit contracts", () => {
     }
   });
 
+  it("classifies Admin reporting initialization as a service-only system command", () => {
+    const providerCommand = command();
+    const {
+      providerEvidenceManifestHash: _providerEvidenceManifestHash,
+      causation: _causation,
+      relationshipId: _relationshipId,
+      authorizationVersion: _authorizationVersion,
+      ...common
+    } = providerCommand;
+    const initialization: AuditedEconomyCommandEnvelopeV1 = {
+      ...common,
+      commandId: "command:admin-reporting-initialization:v1",
+      commandType: "initialize-admin-reporting",
+      commandSource: "system",
+      actorAccountId: "service:economy-reporting-bootstrap",
+      subjectAccountId: "system:economy-reporting",
+      principalType: "service",
+      routeId: "cd:economy:admin-reporting-bootstrap",
+    };
+
+    expect(() =>
+      assertAuditedEconomyCommandEnvelope(initialization),
+    ).not.toThrow();
+    for (const invalid of [
+      { ...initialization, commandSource: "browser" as const },
+      { ...initialization, commandSource: "operator" as const },
+      { ...initialization, principalType: "account" as const },
+    ]) {
+      expect(() =>
+        assertAuditedEconomyCommandEnvelope(invalid),
+      ).toThrowError(expect.objectContaining({ code: "INVALID_CONTRACT" }));
+    }
+  });
+
   it("rejects raw Idempotency-Key fields even if JavaScript bypasses typing", () => {
     const audited = {
       ...command(),

@@ -6,7 +6,9 @@ promotion is owned by the approved GitHub CD workflow.
 ## Unreleased
 
 - **Added**
-  - (placeholder)
+  - Added the service-only `initialize-admin-reporting` audited command type
+    for a host to create a missing derived reporting baseline through its
+    existing immutable authority commit boundary.
 
 - **Changed**
   - (placeholder)
@@ -15,7 +17,9 @@ promotion is owned by the approved GitHub CD workflow.
   - (placeholder)
 
 - **Security**
-  - (placeholder)
+  - Admin reporting initialization is additive-only, is incompatible with
+    browser, provider, and operator sources, and does not modify legacy command
+    unions or canonical transaction bytes.
 
 ## [0.8.0] - 2026-08-08
 

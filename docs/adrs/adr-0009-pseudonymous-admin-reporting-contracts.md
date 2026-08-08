@@ -67,6 +67,10 @@ remain explainable and must never become an automatic financial mutation.
   result instead of exposing a derived statistic. The result remains advisory.
 - The package contains no identity resolution operation. Any governed
   re-identification workflow remains a separate owner-only site boundary.
+- Add `initialize-admin-reporting` only to the audited command union. It is a
+  service-principal, system-source marker for a host's one-time create-only
+  reporting baseline commit; it is not a balance change, generic projection
+  rewrite, or permission to bypass the authority state machine.
 
 ## Consequences
 
