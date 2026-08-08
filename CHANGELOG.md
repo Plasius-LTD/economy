@@ -6,6 +6,20 @@ promotion is owned by the approved GitHub CD workflow.
 ## Unreleased
 
 - **Added**
+  - (placeholder)
+
+- **Changed**
+  - (placeholder)
+
+- **Fixed**
+  - (placeholder)
+
+- **Security**
+  - (placeholder)
+
+## [0.8.0] - 2026-08-08
+
+- **Added**
   - Added bounded, provider-neutral Admin Token global balance/lifetime,
     pseudonymous wallet balance, activity, trend, suppression, projection
     freshness, and explainable 28-window median/MAD contracts.
@@ -236,3 +250,4 @@ promotion is owned by the approved GitHub CD workflow.
 [0.5.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.5.0
 [0.6.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.6.0
 [0.7.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.7.0
+[0.8.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.8.0
