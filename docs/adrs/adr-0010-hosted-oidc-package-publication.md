@@ -40,10 +40,10 @@ The external npm trusted publisher is bound exactly to organization
 - A moved main branch, absent exact-SHA CI result, unsupported runtime, missing
   trusted-publisher binding, or OIDC failure stops publication before npm
   mutation.
-- Validation may continue on approved self-hosted infrastructure; only the
-  narrow publication boundary must be GitHub-hosted.
+- Public package CI and the narrow publication boundary use isolated
+  GitHub-hosted capacity, keeping untrusted repository code away from company
+  runners and avoiding private runner-group availability drift.
 - Releases use short-lived workflow identity and retain npm provenance without
   a reusable write credential.
 - Rollback disables `cd.yml` or the release-integrity flag. Published package
   history, tags, and registry versions are never rewritten or deleted.
-

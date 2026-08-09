@@ -580,7 +580,9 @@ Report vulnerabilities privately according to [SECURITY.md](./SECURITY.md).
 Production package publication runs only from `.github/workflows/cd.yml` on
 protected `main`. The job verifies that the prepared commit is still the
 current main commit and has an exact successful `ci.yml` push result before it
-mutates release state. npm publication runs on GitHub-hosted Node.js 24 with
+mutates release state. Public package CI runs on GitHub-hosted capacity so it
+cannot execute on company-managed runners. npm publication runs on
+GitHub-hosted Node.js 24 with
 npm 11.5.1 or newer, uses the protected `production` environment and
 short-lived npm OIDC with provenance, and has no long-lived npm write-token
 fallback. Rollback disables CD; it never rewrites published package history.
