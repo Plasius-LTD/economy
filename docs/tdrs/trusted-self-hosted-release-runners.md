@@ -2,7 +2,12 @@
 
 ## Status
 
-Accepted — 2026-07-21
+Superseded — 2026-08-09 by
+[ADR-0010](../adrs/adr-0010-hosted-oidc-package-publication.md)
+
+This document records the former self-hosted, token-authenticated publication
+design. It is retained as decision history and is not the current release
+policy.
 
 ## Decision
 

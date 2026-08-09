@@ -22,10 +22,12 @@ describe("workflow trust and release policy", () => {
     expect(ciWorkflow).not.toContain("pull_request_target:");
   });
 
-  it("runs both production release jobs on configurable trusted runners", () => {
-    expect(cdWorkflow).toContain(trustedProductionRunner);
+  it("keeps preparation trusted while publishing from the hosted OIDC runner", () => {
+    expect(cdWorkflow).toContain("runs-on: ubuntu-latest");
     expect(releasePrepareWorkflow).toContain(trustedProductionRunner);
     expect(releasePrepareWorkflow).not.toContain("runs-on: ubuntu-latest");
+    expect(cdWorkflow).not.toContain("secrets.NPM_TOKEN");
+    expect(cdWorkflow).not.toContain("NODE_AUTH_TOKEN:");
   });
 
   it("keeps inherited release-preparation secrets outside environment shadowing", () => {
@@ -113,11 +115,10 @@ describe("workflow trust and release policy", () => {
     expect(releasePrepareWorkflow).not.toMatch(/\n\s+pull_request(?:_target)?:/u);
   });
 
-  it("retains evidence and only requests npm provenance on hosted runners", () => {
+  it("retains evidence and always requests npm provenance on the hosted runner", () => {
     expect(cdWorkflow).toContain("name: release-coverage-lcov");
     expect(cdWorkflow).toContain("name: release-sbom");
-    expect(cdWorkflow).toContain('RUNNER_ENVIRONMENT: ${{ runner.environment }}');
     expect(cdWorkflow).toContain("npm publish ${FLAGS} --provenance");
-    expect(cdWorkflow).toContain("npm publish ${FLAGS} --registry");
+    expect(cdWorkflow).not.toMatch(/npm publish \$\{FLAGS\} --registry/mu);
   });
 });

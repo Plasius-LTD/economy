@@ -557,12 +557,12 @@ Coverage must remain at least 80%, and every changed source file must appear in
 LCOV. Generated property tests cover exact arithmetic, double-entry balance,
 projection rebuilds, idempotency, reversals, lot isolation, and allocation
 non-negativity. npm publication is performed only by the approved GitHub CD
-workflow on configurable trusted self-hosted runners. Release LCOV and the
-CycloneDX SBOM remain retained even when an external coverage or npm provenance
-service is unavailable. Release tags and GitHub Releases use a current-repository
-GitHub App token with explicit Contents and Workflows write permissions; npm
-publication continues to use only the protected `NPM_TOKEN`. Both release jobs
-install a checksum-pinned GitHub CLI under `RUNNER_TEMP`. A requested version
+workflow from the protected `main` branch. The final publication job runs on a
+GitHub-hosted runner so npm can validate its short-lived OIDC identity and
+record provenance; it has no long-lived npm write-token fallback. Release LCOV
+and the CycloneDX SBOM remain retained even when an external coverage service
+is unavailable. Release tags and GitHub Releases use a current-repository
+GitHub App token with explicit Contents and Workflows write permissions. A requested version
 bump reuses the current version only when neither npm nor GitHub records it as a
 completed release; use `bump=none` for deliberate recovery of prepared metadata.
 Publication checks out the verified current release-branch HEAD so that recovery
@@ -574,3 +574,14 @@ Do not include raw idempotency keys, provider identifiers, provider callback
 bodies or signatures, payment details, personal data, encrypted-handle
 ciphertext, or secrets in contracts, metadata, tests, examples, or logs.
 Report vulnerabilities privately according to [SECURITY.md](./SECURITY.md).
+<!-- BEGIN PLASIUS RELEASE INTEGRITY -->
+## Release integrity
+
+Production package publication runs only from `.github/workflows/cd.yml` on
+protected `main`. The job verifies that the prepared commit is still the
+current main commit and has an exact successful `ci.yml` push result before it
+mutates release state. npm publication runs on GitHub-hosted Node.js 24 with
+npm 11.5.1 or newer, uses the protected `production` environment and
+short-lived npm OIDC with provenance, and has no long-lived npm write-token
+fallback. Rollback disables CD; it never rewrites published package history.
+<!-- END PLASIUS RELEASE INTEGRITY -->
