@@ -15,10 +15,10 @@ const trustedProductionRunner =
   "runs-on: ${{ fromJSON(vars.CD_RUNNER_LABELS || '[\"self-hosted\",\"Linux\",\"X64\"]') }}";
 
 describe("workflow trust and release policy", () => {
-  it("keeps fork pull requests off trusted CI runners", () => {
-    expect(ciWorkflow).toContain(
-      "github.event.pull_request.head.repo.full_name != github.repository",
-    );
+  it("keeps all public package CI off company-managed runners", () => {
+    expect(ciWorkflow).toContain("runs-on: ubuntu-latest");
+    expect(ciWorkflow).not.toContain("self-hosted");
+    expect(ciWorkflow).not.toContain("CI_RUNNER_LABELS");
     expect(ciWorkflow).not.toContain("pull_request_target:");
   });
 
