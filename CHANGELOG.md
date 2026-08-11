@@ -6,16 +6,20 @@ promotion is owned by the approved GitHub CD workflow.
 ## Unreleased
 
 - **Added**
-  - (placeholder)
+  - Added `google-ad-manager` to audited provider-command, provider-evidence,
+    encrypted-handle, manifest, and two-boundary audit-graph contracts.
+  - Added an authenticated-retrieval evidence mode for server-pulled final
+    reports while preserving canonical bytes for existing signed evidence.
 
 - **Changed**
-  - (placeholder)
+  - Classified Google `credit-reward` transactions as `rewarded-ad` activity.
 
 - **Fixed**
   - (placeholder)
 
 - **Security**
-  - (placeholder)
+  - Google final-report evidence must use authenticated retrieval and cannot
+    be mislabeled as a provider signature or a first-party/operator credit.
 
 ## [0.10.0] - 2026-08-11
 

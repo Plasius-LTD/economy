@@ -255,6 +255,15 @@ describe("cross-record economy audit graph", () => {
     ).not.toThrow();
   });
 
+  it("validates authenticated Google report evidence as a rewarded-ad provider workflow", () => {
+    expect(() =>
+      assertEconomyAuditGraph(
+        providerAuditGraph("google-ad-manager"),
+        hash,
+      ),
+    ).not.toThrow();
+  });
+
   it("validates a first-party command only when acceptance and result share one boundary", () => {
     expect(() =>
       assertEconomyAuditGraph(firstPartyAuditGraph(), hash),

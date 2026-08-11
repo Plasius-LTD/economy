@@ -20,10 +20,21 @@ Require exact integer GBP-micro quotes, one whole Token per fixed bundle,
 eligible net of at least 125% of nominal liability, a full reserve, immutable
 batch evidence, and same-user-only source lots.
 
+Google final reports cross the V3 audited authority as authenticated-retrieval
+provider evidence. Extend the audited command/evidence provider union and
+two-boundary audit graph to include `google-ad-manager`. Require Google
+evidence to declare the authenticated retrieval scheme and time, and reject a
+provider-signature representation. Preserve the canonical form of existing
+signed-provider evidence by making the discriminator additive and omitted for
+legacy records.
+
 ## Consequences
 
 - Callers cannot accidentally describe web evidence as cryptographically
   provider-verified.
+- Reconciled Google credits cannot be disguised as operator adjustments or
+  first-party commands; they retain provider provenance through both authority
+  commits and are classified as `rewarded-ad` activity.
 - Site adapters must retain an opaque per-session reporting-key mapping and
   import Google reports before releasing the reserve.
 - Promised rewards may be credited from reserve before revenue becomes final,
