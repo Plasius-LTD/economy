@@ -22,6 +22,7 @@ export type EconomyCommandSourceV1 =
   | "browser"
   | "shopify"
   | "ayet"
+  | "adgem"
   | "bitlabs"
   | "operator"
   | "system";
@@ -117,7 +118,11 @@ export interface AuditedEconomyCommandEnvelopeV1 {
   readonly writerFencingToken: string;
 }
 
-export type EconomyAcquisitionProviderV1 = "shopify" | "ayet" | "bitlabs";
+export type EconomyAcquisitionProviderV1 =
+  | "shopify"
+  | "ayet"
+  | "adgem"
+  | "bitlabs";
 
 /**
  * Privacy-minimized verified provider evidence. Every value derived from a raw
@@ -288,6 +293,7 @@ const COMMAND_SOURCES = new Set<EconomyCommandSourceV1>([
   "browser",
   "shopify",
   "ayet",
+  "adgem",
   "bitlabs",
   "operator",
   "system",
@@ -303,6 +309,7 @@ const PRINCIPAL_TYPES = new Set<EconomyPrincipalTypeV1>([
 const PROVIDER_SOURCES = new Set<EconomyCommandSourceV1>([
   "shopify",
   "ayet",
+  "adgem",
   "bitlabs",
 ]);
 
@@ -317,6 +324,7 @@ const CAUSATION_KINDS = new Set<EconomyCausationKindV1>([
 const PROVIDERS = new Set<EconomyAcquisitionProviderV1>([
   "shopify",
   "ayet",
+  "adgem",
   "bitlabs",
 ]);
 
@@ -349,6 +357,7 @@ const SOURCE_COMMAND_TYPES: Readonly<
     "reverse",
   ]),
   ayet: new Set(["credit-reward", "hold", "release-hold", "reverse"]),
+  adgem: new Set(["credit-reward", "hold", "release-hold", "reverse"]),
   bitlabs: new Set(["credit-reward", "hold", "release-hold", "reverse"]),
   operator: new Set(["adjust", "reverse", "hold", "release-hold"]),
   system: new Set([

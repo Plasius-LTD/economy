@@ -6,16 +6,22 @@ promotion is owned by the approved GitHub CD workflow.
 ## Unreleased
 
 - **Added**
-  - (placeholder)
+  - Added provider-neutral UK CPE offer/goal, immutable reward quote, signed
+    conversion/reversal evidence, payout assessment, and safe reversal
+    disposition contracts.
 
 - **Changed**
-  - (placeholder)
+  - Added AdGem to provider, audit, ledger, query, and source-lot contracts while
+    preserving BitLabs for historical compatibility.
 
 - **Fixed**
   - (placeholder)
 
 - **Security**
-  - (placeholder)
+  - Offerwall quotes now enforce exact fixed-point economics with at least 20%
+    retained contribution margin; approved offers require two distinct
+    reviewers and accessibility approval, and reversals cannot create child
+    debt or revoke entitlements.
 
 ## [0.9.0] - 2026-08-08
 

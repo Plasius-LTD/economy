@@ -14,6 +14,7 @@ export * from "./lots.js";
 export * from "./module-allowances.js";
 export * from "./operations.js";
 export * from "./operator-adjustments.js";
+export * from "./offerwall.js";
 export * from "./paid-lots.js";
 export * from "./ports/persistence.js";
 export * from "./ports/query.js";

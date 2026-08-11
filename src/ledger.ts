@@ -92,6 +92,7 @@ const ACTIVITY_STATUSES = new Set<ActivityStatus>([
 const ACTIVITY_SOURCES = new Set<TokenSource>([
   "shopify",
   "ayet",
+  "adgem",
   "bitlabs",
   "subscription",
   "event",

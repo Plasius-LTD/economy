@@ -138,7 +138,7 @@ export interface PurchaseIntentV1 {
 export interface RewardRateV1 {
   readonly schemaVersion: EconomyContractVersion;
   readonly rateVersion: string;
-  readonly provider: "ayet" | "bitlabs";
+  readonly provider: "ayet" | "adgem" | "bitlabs";
   /** TokenSubunits granted per denominator of authoritative GBP minor units. */
   readonly tokenSubunitsNumerator: string;
   readonly gbpMinorUnitsDenominator: string;
@@ -175,7 +175,7 @@ export interface RewardActivityTransitionV1 {
 
 export interface RewardConversionV1 {
   readonly schemaVersion: EconomyContractVersion;
-  readonly provider: "ayet" | "bitlabs";
+  readonly provider: "ayet" | "adgem" | "bitlabs";
   readonly providerEventId: ProviderEventId;
   readonly beneficiaryAccountId: AccountId;
   readonly walletId: WalletId;
@@ -199,7 +199,9 @@ export function assertRewardConversion(
     "Unsupported reward-conversion contract version",
   );
   economyAssert(
-    conversion.provider === "ayet" || conversion.provider === "bitlabs",
+    conversion.provider === "ayet" ||
+      conversion.provider === "adgem" ||
+      conversion.provider === "bitlabs",
     "INVALID_CONTRACT",
     "Unsupported reward-conversion provider",
   );
@@ -459,7 +461,9 @@ export function assertRewardRate(rate: RewardRateV1): void {
   );
   assertEconomyIdentifier(rate.rateVersion, "rateVersion");
   economyAssert(
-    rate.provider === "ayet" || rate.provider === "bitlabs",
+    rate.provider === "ayet" ||
+      rate.provider === "adgem" ||
+      rate.provider === "bitlabs",
     "INVALID_CONTRACT",
     "Unsupported reward provider",
   );

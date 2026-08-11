@@ -114,6 +114,7 @@ function assertProviderGraph(
   const providerSource =
     envelope.commandSource === "shopify" ||
     envelope.commandSource === "ayet" ||
+    envelope.commandSource === "adgem" ||
     envelope.commandSource === "bitlabs";
 
   if (!providerSource) {
@@ -354,6 +355,7 @@ function assertReceiptGraph(
   const providerSource =
     envelope.commandSource === "shopify" ||
     envelope.commandSource === "ayet" ||
+    envelope.commandSource === "adgem" ||
     envelope.commandSource === "bitlabs";
   if (graph.resultReceipt === undefined) {
     economyAssert(
@@ -525,6 +527,7 @@ function assertAuthorityCommits(
   const providerSource =
     graph.commandEnvelope.commandSource === "shopify" ||
     graph.commandEnvelope.commandSource === "ayet" ||
+    graph.commandEnvelope.commandSource === "adgem" ||
     graph.commandEnvelope.commandSource === "bitlabs";
   const acceptanceKind = providerSource
     ? "provider-acceptance"

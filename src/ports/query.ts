@@ -186,6 +186,7 @@ const ACTIVITY_STATUSES = new Set<WalletActivityStatusV1>([
 const ACTIVITY_SOURCES = new Set<TokenSource>([
   "shopify",
   "ayet",
+  "adgem",
   "bitlabs",
   "subscription",
   "event",

@@ -21,6 +21,7 @@ import { EconomyError, economyAssert } from "./errors.js";
 export type TokenSource =
   | "shopify"
   | "ayet"
+  | "adgem"
   | "bitlabs"
   | "subscription"
   | "event"
@@ -138,6 +139,7 @@ export function assertSourceLot(lot: SourceLotV1): void {
     [
       "shopify",
       "ayet",
+      "adgem",
       "bitlabs",
       "subscription",
       "event",
@@ -161,7 +163,11 @@ export function assertSourceLot(lot: SourceLotV1): void {
     "INVALID_CONTRACT",
     "Source lot has an unsupported refund state",
   );
-  if (lot.source === "ayet" || lot.source === "bitlabs") {
+  if (
+    lot.source === "ayet" ||
+    lot.source === "adgem" ||
+    lot.source === "bitlabs"
+  ) {
     economyAssert(
       lot.transferPolicy === "same-user-only" &&
         lot.providerEventId !== undefined,

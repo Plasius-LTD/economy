@@ -351,9 +351,25 @@ checkout creation; a late provider webhook must instead be reconciled against
 the immutable purchase facts and provider purchase time.
 
 Reward conversion contracts retain signed provider-event IDs, server rate/FX
-versions, exact payout values, and beneficiary/wallet IDs. ayeT and BitLabs lots
-are structurally restricted to `same-user-only`; changing a provider-earned lot
-to household-allocatable is rejected.
+versions, exact payout values, and beneficiary/wallet IDs. ayeT, AdGem, and
+historical BitLabs lots are structurally restricted to `same-user-only`;
+changing a provider-earned lot to household-allocatable is rejected.
+
+### Secure offerwall V2
+
+`OfferVersionV1` and `OfferGoalV1` define immutable, two-person-reviewed UK
+game/app CPE inventory without embedding a provider SDK or HTTP concern.
+`createRewardQuoteV2()` uses exact rational USD/GBP conversion, chargeback
+haircut, expected fees, a 10p nominal Token reference, and an 80% maximum user
+share. Goals that cannot fund one whole Token while retaining at least 20% fail
+closed.
+
+`ProviderConversionEvidenceV1` and `ProviderReversalEvidenceV1` accept only
+opaque event IDs and HMAC-SHA256 fingerprints produced after host-side raw-byte
+verification. `assessProviderConversion()` preserves a locked user reward and
+marks lower provider payout as an offer-disabling incident.
+`planProviderReversal()` separates recoverable value from reserve absorption
+and can never create child debt or revoke a child entitlement.
 
 ### Deterministic paid-acquisition lifecycle
 
