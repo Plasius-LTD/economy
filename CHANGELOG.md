@@ -6,6 +6,20 @@ promotion is owned by the approved GitHub CD workflow.
 ## Unreleased
 
 - **Added**
+  - (placeholder)
+
+- **Changed**
+  - (placeholder)
+
+- **Fixed**
+  - (placeholder)
+
+- **Security**
+  - (placeholder)
+
+## [0.11.0] - 2026-08-11
+
+- **Added**
   - Added `google-ad-manager` to audited provider-command, provider-evidence,
     encrypted-handle, manifest, and two-boundary audit-graph contracts.
   - Added an authenticated-retrieval evidence mode for server-pulled final
@@ -296,3 +310,4 @@ promotion is owned by the approved GitHub CD workflow.
 [0.8.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.8.0
 [0.9.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.9.0
 [0.10.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.10.0
+[0.11.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.11.0
