@@ -6,6 +6,20 @@ promotion is owned by the approved GitHub CD workflow.
 ## Unreleased
 
 - **Added**
+  - (placeholder)
+
+- **Changed**
+  - (placeholder)
+
+- **Fixed**
+  - (placeholder)
+
+- **Security**
+  - (placeholder)
+
+## [0.10.0] - 2026-08-11
+
+- **Added**
   - Added exact GBP-micro Google rewarded-web quote, client-claim,
     reconciliation, and forward-only evidence-state contracts.
   - Added `google-ad-manager` as a persistence-safe Token source and a
@@ -277,3 +291,4 @@ promotion is owned by the approved GitHub CD workflow.
 [0.7.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.7.0
 [0.8.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.8.0
 [0.9.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.9.0
+[0.10.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.10.0
