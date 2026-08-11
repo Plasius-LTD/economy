@@ -85,6 +85,13 @@ not raise these defaults without a separately versioned policy decision.
 `GoogleRewardedWebReconciliationV1` separately proves final paid-impression,
 eligible-net-revenue, nominal-liability, and reserve coverage.
 
+The audited authority treats `google-ad-manager` as a provider command source.
+Final reports use `authenticated-retrieval` evidence with a bounded retrieval
+scheme and verification time; they cannot be represented as signed callbacks.
+Legacy Shopify, ayeT, and BitLabs signed-evidence canonical bytes remain
+unchanged. Google reward credits consequently require the provider-acceptance
+and provider-result authority boundaries and produce `rewarded-ad` activity.
+
 `createGoogleRewardedWebQuote()` uses exact integer GBP micros and issues one
 whole Token only when conservative eligible net is at least 125,000 micros for
 the 100,000-micro nominal liability. The completion bundle has no package

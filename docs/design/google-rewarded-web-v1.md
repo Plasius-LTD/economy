@@ -22,6 +22,14 @@ three facts distinct:
 
 No contract may label a browser event `provider-verified`.
 
+The final Google report is server-pulled through an authenticated provider
+connection rather than received as a signed callback. Its immutable audit
+evidence therefore uses `verificationMode: "authenticated-retrieval"`, a safe
+retrieval-scheme classifier, and the authenticated retrieval time. Google
+evidence cannot use the legacy provider-signature shape. Existing signed
+provider evidence may omit the new discriminator, preserving its original
+canonical bytes and hashes.
+
 ## Quote and margin
 
 All money uses canonical non-negative base-10 strings of integer GBP micros.
@@ -42,6 +50,11 @@ dedicated ad-unit fingerprint, reporting period, quote version, claim count,
 matched paid-impression count, revenue, finality, and mismatch status. A batch
 can financially reconcile only if every credited bundle is covered by matched
 paid impressions and eligible-net revenue satisfies every locked quote.
+
+After those checks pass, `google-ad-manager` uses the audited `credit-reward`
+provider workflow: one authority boundary durably accepts the report evidence
+and a second records the balanced `rewarded-ad` journal transaction and source
+lot. It must never be written as an operator adjustment or first-party credit.
 
 Google lots are `same-user-only`. Package validation rejects allocation or
 reclaim to another beneficiary. A parent-owned household service is a distinct

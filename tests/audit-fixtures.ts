@@ -13,6 +13,7 @@ import {
   sortEconomyAuthorityRecordReferences,
   type AuditedEconomyCommandEnvelopeV1,
   type EconomyAcceptedCommandReceiptV1,
+  type EconomyAcquisitionProviderV1,
   type EconomyAuditGraphV1,
   type EconomyAuthorityCommitManifestV1,
   type EconomyAuthorityHeadV1,
@@ -275,11 +276,35 @@ export function authorityManifest(
   };
 }
 
-export function providerAuditGraph(): EconomyAuditGraphV1 {
-  const evidence = providerEvidence();
-  const handle = encryptedHandle();
-  const evidenceManifest = providerManifest(evidence, handle);
-  const command = auditedProviderCommand(evidenceManifest);
+export function providerAuditGraph(
+  provider: EconomyAcquisitionProviderV1 = "shopify",
+): EconomyAuditGraphV1 {
+  const googleRewardedWeb = provider === "google-ad-manager";
+  const baseEvidence = providerEvidence();
+  const {
+    signatureScheme: _signatureScheme,
+    signatureVerifiedAt: _signatureVerifiedAt,
+    ...unsignedBaseEvidence
+  } = baseEvidence;
+  const evidence: EconomyProviderEvidenceHashV1 = googleRewardedWeb
+    ? {
+        ...unsignedBaseEvidence,
+        provider,
+        eventType: "final-paid-impressions",
+        verificationMode: "authenticated-retrieval",
+        authenticatedRetrievalScheme: "google.oauth2-report-api",
+        authenticatedRetrievedAt: "2026-07-26T09:59:58.000Z",
+      }
+    : { ...baseEvidence, provider };
+  const handle = encryptedHandle({ provider });
+  const evidenceManifest = providerManifest(evidence, handle, { provider });
+  const command = auditedProviderCommand(evidenceManifest, {
+    commandType: googleRewardedWeb ? "credit-reward" : "credit-purchase",
+    commandSource: provider,
+    routeId: googleRewardedWeb
+      ? "timer:economy:google-rewarded-web-reconciliation"
+      : "webhook:shopify:orders-paid",
+  });
   const accepted = acceptedReceipt(command);
   const commandHash = accepted.commandEnvelopeHash;
   const acceptedHash = hash(
@@ -321,7 +346,7 @@ export function providerAuditGraph(): EconomyAuditGraphV1 {
   const transactionBase = {
     schemaVersion: "1",
     transactionId: "transaction:purchase:1",
-    activityType: "purchase",
+    activityType: googleRewardedWeb ? "rewarded-ad" : "purchase",
     status: "settled",
     idempotencyKey: command.idempotencyFingerprint.digest,
     providerEventId: evidence.providerEventId,
