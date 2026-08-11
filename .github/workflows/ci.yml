@@ -10,13 +10,9 @@ permissions:
   actions: read
   contents: read
 
-env:
-  FALLBACK_RUNNER_LABEL: ubuntu-latest
-  SELF_HOSTED_RUNNER_LABELS: '["self-hosted","Linux","X64"]'
-
 jobs:
   build-test:
-    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && '"ubuntu-latest"' || vars.CI_RUNNER_LABELS || '["self-hosted","Linux","X64"]') }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 

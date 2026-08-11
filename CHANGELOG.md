@@ -9,6 +9,11 @@ promotion is owned by the approved GitHub CD workflow.
   - (placeholder)
 
 - **Changed**
+  - Restored exact-main npm publication on a GitHub-hosted runner through
+    short-lived OIDC, with an enforced Node/npm runtime and no long-lived
+    write-token fallback.
+  - Moved public package CI to GitHub-hosted capacity so internal and external
+    branches cannot queue on or execute against company-managed runners.
   - (placeholder)
 
 - **Fixed**
