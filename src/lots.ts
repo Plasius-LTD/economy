@@ -22,6 +22,7 @@ export type TokenSource =
   | "shopify"
   | "ayet"
   | "bitlabs"
+  | "google-ad-manager"
   | "subscription"
   | "event"
   | "competition"
@@ -139,6 +140,7 @@ export function assertSourceLot(lot: SourceLotV1): void {
       "shopify",
       "ayet",
       "bitlabs",
+      "google-ad-manager",
       "subscription",
       "event",
       "competition",
@@ -161,7 +163,11 @@ export function assertSourceLot(lot: SourceLotV1): void {
     "INVALID_CONTRACT",
     "Source lot has an unsupported refund state",
   );
-  if (lot.source === "ayet" || lot.source === "bitlabs") {
+  if (
+    lot.source === "ayet" ||
+    lot.source === "bitlabs" ||
+    lot.source === "google-ad-manager"
+  ) {
     economyAssert(
       lot.transferPolicy === "same-user-only" &&
         lot.providerEventId !== undefined,

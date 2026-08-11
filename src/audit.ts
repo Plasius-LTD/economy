@@ -50,6 +50,7 @@ export interface EconomyCausationReferenceV1 {
 
 export type EconomyHmacFingerprintDomainV1 =
   | "economy.idempotency-key.v1"
+  | "economy.google-reporting-key.v1"
   | "economy.provider-event-key.v1"
   | "economy.provider-object-key.v1"
   | "economy.provider-payload.v1"
@@ -322,6 +323,7 @@ const PROVIDERS = new Set<EconomyAcquisitionProviderV1>([
 
 const FINGERPRINT_DOMAINS = new Set<EconomyHmacFingerprintDomainV1>([
   "economy.idempotency-key.v1",
+  "economy.google-reporting-key.v1",
   "economy.provider-event-key.v1",
   "economy.provider-object-key.v1",
   "economy.provider-payload.v1",

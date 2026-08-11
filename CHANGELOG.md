@@ -6,16 +6,23 @@ promotion is owned by the approved GitHub CD workflow.
 ## Unreleased
 
 - **Added**
-  - (placeholder)
+  - Added exact GBP-micro Google rewarded-web quote, client-claim,
+    reconciliation, and forward-only evidence-state contracts.
+  - Added `google-ad-manager` as a persistence-safe Token source and a
+    domain-separated opaque reporting-key fingerprint.
 
 - **Changed**
-  - (placeholder)
+  - Extended activity/query source validation for Google rewarded-web lots
+    while preserving existing provider values.
 
 - **Fixed**
   - (placeholder)
 
 - **Security**
-  - (placeholder)
+  - Google browser grants can only be `client-claimed`; financial
+    reconciliation requires final matched impressions, eligible-net coverage,
+    exact nominal liability, and a full reserve.
+  - Google lots are same-user-only and cannot be allocated to a linked child.
 
 ## [0.9.0] - 2026-08-08
 
