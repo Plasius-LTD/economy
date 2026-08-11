@@ -93,6 +93,7 @@ const ACTIVITY_SOURCES = new Set<TokenSource>([
   "shopify",
   "ayet",
   "bitlabs",
+  "google-ad-manager",
   "subscription",
   "event",
   "competition",

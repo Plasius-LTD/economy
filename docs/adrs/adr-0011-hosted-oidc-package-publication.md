@@ -1,4 +1,4 @@
-# ADR-0010: Hosted OIDC package publication
+# ADR-0011: Hosted OIDC package publication
 
 - Status: Accepted
 - Date: 2026-08-09

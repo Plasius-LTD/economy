@@ -23,6 +23,7 @@ import {
   type EconomyAuditedIdempotencyResultV1,
   type EconomyAuditedIdempotencyScopeV1,
   type EconomyCommandResultReceiptV1,
+  type EconomyProviderEvidenceHashV1,
   type EconomyPersistencePortV2,
   type EconomyPersistencePortV3,
   type LedgerTransactionV1,
@@ -271,6 +272,52 @@ describe("privacy-minimized economy audit contracts", () => {
         webhookBody: '{"email":"not-allowed"}',
         signature: "not-allowed",
         providerOrderId: "not-allowed",
+      } as never),
+    ).toThrowError(expect.objectContaining({ code: "INVALID_CONTRACT" }));
+  });
+
+  it("accepts Google final-report evidence only as authenticated retrieval", () => {
+    const {
+      signatureScheme: _signatureScheme,
+      signatureVerifiedAt: _signatureVerifiedAt,
+      ...legacyEvidence
+    } = providerEvidence();
+    const googleEvidence = {
+      ...legacyEvidence,
+      provider: "google-ad-manager",
+      eventType: "final-paid-impressions",
+      verificationMode: "authenticated-retrieval",
+      authenticatedRetrievalScheme: "google.oauth2-report-api",
+      authenticatedRetrievedAt: "2026-07-26T09:59:58.000Z",
+    } as unknown as EconomyProviderEvidenceHashV1;
+
+    expect(() =>
+      assertEconomyProviderEvidenceHash(googleEvidence),
+    ).not.toThrow();
+    expect(
+      canonicalEconomyProviderEvidenceHashPayload(providerEvidence()),
+    ).not.toContain("verificationMode");
+    expect(() =>
+      assertEconomyProviderEvidenceHash({
+        ...googleEvidence,
+        provider: "shopify",
+      } as never),
+    ).toThrowError(expect.objectContaining({ code: "INVALID_CONTRACT" }));
+    const {
+      verificationMode: _verificationMode,
+      authenticatedRetrievalScheme: _authenticatedRetrievalScheme,
+      authenticatedRetrievedAt: _authenticatedRetrievedAt,
+      ...unverifiedGoogleEvidence
+    } = googleEvidence as EconomyProviderEvidenceHashV1 & {
+      readonly authenticatedRetrievalScheme: string;
+      readonly authenticatedRetrievedAt: string;
+    };
+    expect(() =>
+      assertEconomyProviderEvidenceHash({
+        ...unverifiedGoogleEvidence,
+        verificationMode: "provider-signature",
+        signatureScheme: "google.hmac-sha256",
+        signatureVerifiedAt: "2026-07-26T09:59:58.000Z",
       } as never),
     ).toThrowError(expect.objectContaining({ code: "INVALID_CONTRACT" }));
   });

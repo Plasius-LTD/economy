@@ -23,6 +23,7 @@ export type EconomyCommandSourceV1 =
   | "shopify"
   | "ayet"
   | "bitlabs"
+  | "google-ad-manager"
   | "operator"
   | "system";
 
@@ -50,6 +51,7 @@ export interface EconomyCausationReferenceV1 {
 
 export type EconomyHmacFingerprintDomainV1 =
   | "economy.idempotency-key.v1"
+  | "economy.google-reporting-key.v1"
   | "economy.provider-event-key.v1"
   | "economy.provider-object-key.v1"
   | "economy.provider-payload.v1"
@@ -117,7 +119,11 @@ export interface AuditedEconomyCommandEnvelopeV1 {
   readonly writerFencingToken: string;
 }
 
-export type EconomyAcquisitionProviderV1 = "shopify" | "ayet" | "bitlabs";
+export type EconomyAcquisitionProviderV1 =
+  | "shopify"
+  | "ayet"
+  | "bitlabs"
+  | "google-ad-manager";
 
 /**
  * Privacy-minimized verified provider evidence. Every value derived from a raw
@@ -135,8 +141,19 @@ export interface EconomyProviderEvidenceHashV1 {
   readonly eventType: string;
   readonly payloadFingerprint: EconomyHmacFingerprintV1;
   readonly reconciliationEvidenceFingerprint?: EconomyHmacFingerprintV1;
-  readonly signatureScheme: string;
-  readonly signatureVerifiedAt: IsoTimestamp;
+  /** Legacy/signed-callback verification fields; both must be present together. */
+  readonly signatureScheme?: string;
+  readonly signatureVerifiedAt?: IsoTimestamp;
+  /**
+   * Additive discriminator. Omitted legacy evidence remains provider-signed.
+   * Google final reports must use authenticated retrieval, never a fabricated
+   * provider-signature claim.
+   */
+  readonly verificationMode?:
+    | "provider-signature"
+    | "authenticated-retrieval";
+  readonly authenticatedRetrievalScheme?: string;
+  readonly authenticatedRetrievedAt?: IsoTimestamp;
   readonly providerOccurredAt?: IsoTimestamp;
   readonly receivedAt: IsoTimestamp;
   readonly operationalHandleBindingId?: string;
@@ -289,6 +306,7 @@ const COMMAND_SOURCES = new Set<EconomyCommandSourceV1>([
   "shopify",
   "ayet",
   "bitlabs",
+  "google-ad-manager",
   "operator",
   "system",
 ]);
@@ -304,6 +322,7 @@ const PROVIDER_SOURCES = new Set<EconomyCommandSourceV1>([
   "shopify",
   "ayet",
   "bitlabs",
+  "google-ad-manager",
 ]);
 
 const CAUSATION_KINDS = new Set<EconomyCausationKindV1>([
@@ -318,10 +337,12 @@ const PROVIDERS = new Set<EconomyAcquisitionProviderV1>([
   "shopify",
   "ayet",
   "bitlabs",
+  "google-ad-manager",
 ]);
 
 const FINGERPRINT_DOMAINS = new Set<EconomyHmacFingerprintDomainV1>([
   "economy.idempotency-key.v1",
+  "economy.google-reporting-key.v1",
   "economy.provider-event-key.v1",
   "economy.provider-object-key.v1",
   "economy.provider-payload.v1",
@@ -350,6 +371,12 @@ const SOURCE_COMMAND_TYPES: Readonly<
   ]),
   ayet: new Set(["credit-reward", "hold", "release-hold", "reverse"]),
   bitlabs: new Set(["credit-reward", "hold", "release-hold", "reverse"]),
+  "google-ad-manager": new Set([
+    "credit-reward",
+    "hold",
+    "release-hold",
+    "reverse",
+  ]),
   operator: new Set(["adjust", "reverse", "hold", "release-hold"]),
   system: new Set([
     "credit-event",
@@ -681,6 +708,9 @@ export function assertEconomyProviderEvidenceHash(
       "reconciliationEvidenceFingerprint",
       "signatureScheme",
       "signatureVerifiedAt",
+      "verificationMode",
+      "authenticatedRetrievalScheme",
+      "authenticatedRetrievedAt",
       "providerOccurredAt",
       "receivedAt",
       "operationalHandleBindingId",
@@ -716,9 +746,43 @@ export function assertEconomyProviderEvidenceHash(
     );
   }
   assertSafeClassifier(evidence.eventType, "Provider event type");
-  assertSafeClassifier(evidence.signatureScheme, "Provider signature scheme");
-  const signatureVerifiedAt = parseIsoTimestamp(evidence.signatureVerifiedAt);
   const receivedAt = parseIsoTimestamp(evidence.receivedAt);
+  const signatureFieldsPresent =
+    evidence.signatureScheme !== undefined &&
+    evidence.signatureVerifiedAt !== undefined;
+  const retrievalFieldsPresent =
+    evidence.authenticatedRetrievalScheme !== undefined &&
+    evidence.authenticatedRetrievedAt !== undefined;
+  const verificationMode = evidence.verificationMode ?? "provider-signature";
+  economyAssert(
+    (verificationMode === "provider-signature" &&
+      evidence.provider !== "google-ad-manager" &&
+      signatureFieldsPresent &&
+      !retrievalFieldsPresent &&
+      evidence.authenticatedRetrievalScheme === undefined &&
+      evidence.authenticatedRetrievedAt === undefined) ||
+      (verificationMode === "authenticated-retrieval" &&
+        evidence.provider === "google-ad-manager" &&
+        retrievalFieldsPresent &&
+        evidence.signatureScheme === undefined &&
+        evidence.signatureVerifiedAt === undefined),
+    "INVALID_CONTRACT",
+    "Provider evidence must use exactly one permitted verification method",
+  );
+  const verifiedAt = verificationMode === "provider-signature"
+    ? evidence.signatureVerifiedAt!
+    : evidence.authenticatedRetrievedAt!;
+  if (verificationMode === "provider-signature") {
+    assertSafeClassifier(
+      evidence.signatureScheme!,
+      "Provider signature scheme",
+    );
+  } else {
+    assertSafeClassifier(
+      evidence.authenticatedRetrievalScheme!,
+      "Provider authenticated-retrieval scheme",
+    );
+  }
   if (evidence.providerOccurredAt !== undefined) {
     economyAssert(
       parseIsoTimestamp(evidence.providerOccurredAt) <= receivedAt,
@@ -727,9 +791,9 @@ export function assertEconomyProviderEvidenceHash(
     );
   }
   economyAssert(
-    receivedAt >= signatureVerifiedAt,
+    receivedAt >= parseIsoTimestamp(verifiedAt),
     "INVALID_TIME_WINDOW",
-    "Provider evidence cannot be received before signature verification",
+    "Provider evidence cannot be received before verification",
   );
   if (evidence.operationalHandleBindingId !== undefined) {
     assertEconomyIdentifier(
@@ -1170,8 +1234,24 @@ export function canonicalEconomyProviderEvidenceHashPayload(
             evidence.reconciliationEvidenceFingerprint,
           ),
         }),
-    signatureScheme: evidence.signatureScheme,
-    signatureVerifiedAt: evidence.signatureVerifiedAt,
+    ...(evidence.verificationMode === undefined
+      ? {}
+      : { verificationMode: evidence.verificationMode }),
+    ...(evidence.signatureScheme === undefined
+      ? {}
+      : { signatureScheme: evidence.signatureScheme }),
+    ...(evidence.signatureVerifiedAt === undefined
+      ? {}
+      : { signatureVerifiedAt: evidence.signatureVerifiedAt }),
+    ...(evidence.authenticatedRetrievalScheme === undefined
+      ? {}
+      : {
+          authenticatedRetrievalScheme:
+            evidence.authenticatedRetrievalScheme,
+        }),
+    ...(evidence.authenticatedRetrievedAt === undefined
+      ? {}
+      : { authenticatedRetrievedAt: evidence.authenticatedRetrievedAt }),
     ...(evidence.providerOccurredAt === undefined
       ? {}
       : { providerOccurredAt: evidence.providerOccurredAt }),

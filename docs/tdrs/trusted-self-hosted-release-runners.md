@@ -3,7 +3,7 @@
 ## Status
 
 Superseded — 2026-08-09 by
-[ADR-0010](../adrs/adr-0010-hosted-oidc-package-publication.md)
+[ADR-0011](../adrs/adr-0011-hosted-oidc-package-publication.md)
 
 This document records the former self-hosted, token-authenticated publication
 design. It is retained as decision history and is not the current release

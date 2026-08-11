@@ -17,6 +17,7 @@ import {
   type EconomyProviderEvidenceHashV1,
   type EconomyProviderEvidenceManifestV1,
   type EconomyCommandResultReceiptV1,
+  type EconomyCommandSourceV1,
 } from "./audit.js";
 import {
   advanceEconomyAuthorityHead,
@@ -41,6 +42,17 @@ import {
   type ActivityType,
   type EconomicJournalTransactionV1,
 } from "./ledger.js";
+
+const PROVIDER_COMMAND_SOURCES = new Set<EconomyCommandSourceV1>([
+  "shopify",
+  "ayet",
+  "bitlabs",
+  "google-ad-manager",
+]);
+
+function isProviderCommandSource(source: EconomyCommandSourceV1): boolean {
+  return PROVIDER_COMMAND_SOURCES.has(source);
+}
 
 /** Complete bounded record graph for one accepted authoritative command. */
 export interface EconomyAuditGraphV1 {
@@ -111,10 +123,7 @@ function assertProviderGraph(
   acceptanceCommit: EconomyAuthorityCommitManifestV1,
 ): void {
   const envelope = graph.commandEnvelope;
-  const providerSource =
-    envelope.commandSource === "shopify" ||
-    envelope.commandSource === "ayet" ||
-    envelope.commandSource === "bitlabs";
+  const providerSource = isProviderCommandSource(envelope.commandSource);
 
   if (!providerSource) {
     economyAssert(
@@ -282,7 +291,10 @@ function expectedTransactionActivityTypes(
   }
   if (envelope.commandType === "credit-reward") {
     return new Set([
-      envelope.commandSource === "ayet" ? "rewarded-ad" : "offerwall",
+      envelope.commandSource === "ayet" ||
+      envelope.commandSource === "google-ad-manager"
+        ? "rewarded-ad"
+        : "offerwall",
     ]);
   }
   if (envelope.commandType === "credit-event") {
@@ -351,10 +363,7 @@ function assertReceiptGraph(
     acceptedHash,
   );
 
-  const providerSource =
-    envelope.commandSource === "shopify" ||
-    envelope.commandSource === "ayet" ||
-    envelope.commandSource === "bitlabs";
+  const providerSource = isProviderCommandSource(envelope.commandSource);
   if (graph.resultReceipt === undefined) {
     economyAssert(
       providerSource &&
@@ -522,10 +531,9 @@ function assertAuthorityCommits(
     "Authority commits do not reconstruct the expected authority head",
   );
 
-  const providerSource =
-    graph.commandEnvelope.commandSource === "shopify" ||
-    graph.commandEnvelope.commandSource === "ayet" ||
-    graph.commandEnvelope.commandSource === "bitlabs";
+  const providerSource = isProviderCommandSource(
+    graph.commandEnvelope.commandSource,
+  );
   const acceptanceKind = providerSource
     ? "provider-acceptance"
     : "first-party-command";

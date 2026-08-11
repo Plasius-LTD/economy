@@ -22,6 +22,45 @@ promotion is owned by the approved GitHub CD workflow.
 - **Security**
   - (placeholder)
 
+## [0.11.0] - 2026-08-11
+
+- **Added**
+  - Added `google-ad-manager` to audited provider-command, provider-evidence,
+    encrypted-handle, manifest, and two-boundary audit-graph contracts.
+  - Added an authenticated-retrieval evidence mode for server-pulled final
+    reports while preserving canonical bytes for existing signed evidence.
+
+- **Changed**
+  - Classified Google `credit-reward` transactions as `rewarded-ad` activity.
+
+- **Fixed**
+  - (placeholder)
+
+- **Security**
+  - Google final-report evidence must use authenticated retrieval and cannot
+    be mislabeled as a provider signature or a first-party/operator credit.
+
+## [0.10.0] - 2026-08-11
+
+- **Added**
+  - Added exact GBP-micro Google rewarded-web quote, client-claim,
+    reconciliation, and forward-only evidence-state contracts.
+  - Added `google-ad-manager` as a persistence-safe Token source and a
+    domain-separated opaque reporting-key fingerprint.
+
+- **Changed**
+  - Extended activity/query source validation for Google rewarded-web lots
+    while preserving existing provider values.
+
+- **Fixed**
+  - (placeholder)
+
+- **Security**
+  - Google browser grants can only be `client-claimed`; financial
+    reconciliation requires final matched impressions, eligible-net coverage,
+    exact nominal liability, and a full reserve.
+  - Google lots are same-user-only and cannot be allocated to a linked child.
+
 ## [0.9.0] - 2026-08-08
 
 - **Added**
@@ -275,3 +314,5 @@ promotion is owned by the approved GitHub CD workflow.
 [0.7.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.7.0
 [0.8.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.8.0
 [0.9.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.9.0
+[0.10.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.10.0
+[0.11.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.11.0
