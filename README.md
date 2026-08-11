@@ -50,7 +50,7 @@ outside signed PostgreSQL `bigint` range are rejected. Runtime validators also
 reject non-string JSON values rather than coercing numbers into wire amounts.
 
 `ActivityEntryV1` contains both a stable `source` (`shopify`, `ayet`, `bitlabs`,
-`subscription`, `event`, `competition`, or `adjustment`) and a bounded
+`google-ad-manager`, `subscription`, `event`, `competition`, or `adjustment`) and a bounded
 display-oriented `sourceLabel`. Filters and reconciliation must use `source`;
 localized UI must use `sourceLabel`.
 
@@ -77,6 +77,25 @@ uses the declared flat nominal ratio. The initial immutable catalog facts are:
 The default server ceilings are £50 per order and £100 per payer and household
 over 30 days. A consuming service may apply a lower household control but must
 not raise these defaults without a separately versioned policy decision.
+
+## Google rewarded web
+
+`GoogleRewardedWebGrantClaimV1` deliberately labels GPT browser completion as
+`client-claimed`; Google rewarded web has no server-side verification contract.
+`GoogleRewardedWebReconciliationV1` separately proves final paid-impression,
+eligible-net-revenue, nominal-liability, and reserve coverage.
+
+`createGoogleRewardedWebQuote()` uses exact integer GBP micros and issues one
+whole Token only when conservative eligible net is at least 125,000 micros for
+the 100,000-micro nominal liability. The completion bundle has no package
+default. `google-ad-manager` source lots must be `same-user-only` and retain an
+opaque internal claim identifier; the package exposes no Token transfer to a
+linked account.
+
+A parent-owned household service may eventually provide dependent family
+access without moving Tokens or assigning the entitlement. That journey is
+outside this V1 contract and must stay separately flagged off until Google has
+approved its exact policy treatment in writing.
 
 ## Balanced journal transactions
 

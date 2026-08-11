@@ -140,6 +140,36 @@ describe("source-lot accounting", () => {
     ).toThrowError(expect.objectContaining({ code: "SOURCE_LOT_RESTRICTED" }));
   });
 
+  it("keeps Google rewarded-web value on the earning adult account", () => {
+    const googleShape = lot({
+      lotId: "lot:google:earned",
+      source: "google-ad-manager",
+      transferPolicy: "same-user-only",
+    });
+    const {
+      householdId: _householdId,
+      payerAccountId: _payerAccountId,
+      ...googleEarned
+    } = {
+      ...googleShape,
+      providerEventId: "google:claim:1",
+    };
+
+    expect(() => assertSourceLot(googleEarned)).not.toThrow();
+    expect(
+      canUseSourceLot(googleEarned, {
+        operation: "spend",
+        beneficiaryAccountId: "account:adult",
+      }),
+    ).toBe(true);
+    expect(
+      canUseSourceLot(googleEarned, {
+        operation: "spend",
+        beneficiaryAccountId: "account:child",
+      }),
+    ).toBe(false);
+  });
+
   it("rejects attempts to mark adult reward-provider earnings as allocatable", () => {
     expect(() =>
       assertSourceLot(
@@ -157,6 +187,16 @@ describe("source-lot accounting", () => {
           lotId: "lot:missing-provider-event",
           source: "ayet",
           transferPolicy: "same-user-only",
+        }),
+      ),
+    ).toThrowError(expect.objectContaining({ code: "SOURCE_LOT_RESTRICTED" }));
+    expect(() =>
+      assertSourceLot(
+        lot({
+          lotId: "lot:google:unsafe-earned",
+          source: "google-ad-manager",
+          providerEventId: "google:claim:1",
+          transferPolicy: "household-allocatable",
         }),
       ),
     ).toThrowError(expect.objectContaining({ code: "SOURCE_LOT_RESTRICTED" }));

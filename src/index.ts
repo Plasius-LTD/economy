@@ -8,6 +8,7 @@ export * from "./authority.js";
 export * from "./contracts.js";
 export * from "./early-backers.js";
 export * from "./errors.js";
+export * from "./google-rewarded-web.js";
 export * from "./integrity.js";
 export * from "./ledger.js";
 export * from "./lots.js";

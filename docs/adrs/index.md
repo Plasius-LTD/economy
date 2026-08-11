@@ -9,3 +9,4 @@
 - [ADR-0007: Audited non-economic personal-wallet initialization](./adr-0007-audited-non-economic-wallet-initialization.md)
 - [ADR-0008: Preview-bound dual-approved operator Token adjustments](./adr-0008-preview-bound-dual-approved-operator-adjustments.md)
 - [ADR-0009: Pseudonymous Admin Token reporting contracts](./adr-0009-pseudonymous-admin-reporting-contracts.md)
+- [ADR-0010: Separate Google web claims from report and financial evidence](./adr-0010-google-rewarded-web-claims-and-reconciliation.md)
