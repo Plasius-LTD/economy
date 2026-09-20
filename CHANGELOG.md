@@ -15,6 +15,7 @@ promotion is owned by the approved GitHub CD workflow.
   - (placeholder)
 
 - **Security**
+  - Refreshed the lockfile and pinned `esbuild` to a patched release for the development toolchain.
   - (placeholder)
 
 ## [0.11.2] - 2026-09-20
