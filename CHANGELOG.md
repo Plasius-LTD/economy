@@ -5,6 +5,8 @@ promotion is owned by the approved GitHub CD workflow.
 
 ## Unreleased
 
+- Refresh compatible npm dependencies and published Plasius dependency resolutions for the weekly security maintenance batch (2026-09-27).
+
 - **Added**
   - (placeholder)
 
