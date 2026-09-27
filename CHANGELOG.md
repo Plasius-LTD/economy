@@ -5,6 +5,20 @@ promotion is owned by the approved GitHub CD workflow.
 
 ## Unreleased
 
+- **Added**
+  - (placeholder)
+
+- **Changed**
+  - (placeholder)
+
+- **Fixed**
+  - (placeholder)
+
+- **Security**
+  - (placeholder)
+
+## [0.11.3] - 2026-09-27
+
 - Refresh npm dependency lockfile to current supported stable versions (weekly maintenance, 2026-09-27).
 
 - **Added**
@@ -355,3 +369,4 @@ promotion is owned by the approved GitHub CD workflow.
 [0.11.0]: https://github.com/Plasius-LTD/economy/releases/tag/v0.11.0
 [0.11.1]: https://github.com/Plasius-LTD/economy/releases/tag/v0.11.1
 [0.11.2]: https://github.com/Plasius-LTD/economy/releases/tag/v0.11.2
+[0.11.3]: https://github.com/Plasius-LTD/economy/releases/tag/v0.11.3
